@@ -1,0 +1,88 @@
+name: BUILD670 V6.3.45 — verify and prepare deployment branch
+on:
+  push:
+    branches: [main]
+    paths:
+      - incoming/BUILD670_V6.3.45_CALISIR_WEB_PROGRAMI.zip
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build670-v645-release
+  cancel-in-progress: false
+
+jobs:
+  verify-and-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact ZIP and safely extract
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, pathlib, zipfile
+          package = pathlib.Path('incoming/BUILD670_V6.3.45_CALISIR_WEB_PROGRAMI.zip')
+          expected = '575c20151b6b388e61e841d8619235f376944d77e143b3e7975503ddb3ad5688'
+          if not package.is_file():
+              raise SystemExit('Beklenen V6.3.45 paketini incoming klasorune yukleyin.')
+          actual = hashlib.sha256(package.read_bytes()).hexdigest()
+          if actual != expected:
+              raise SystemExit('ZIP SHA-256 uyusmuyor; bilinmeyen surum yayina hazirlanmadi.')
+          dest = pathlib.Path('/tmp/build670-v645')
+          dest.mkdir(exist_ok=True)
+          with zipfile.ZipFile(package) as z:
+              for info in z.infolist():
+                  path = pathlib.PurePosixPath(info.filename)
+                  if path.is_absolute() or '..' in path.parts or '\\' in info.filename:
+                      raise SystemExit('Guvenli olmayan ZIP girdisi: ' + info.filename)
+              if z.testzip():
+                  raise SystemExit('ZIP bozuk')
+              z.extractall(dest)
+          for name in ('server.py','index.html','Dockerfile','android-core/build/android-core.jar','build-version.json'):
+              if not (dest / name).is_file():
+                  raise SystemExit('Eksik uygulama dosyasi: ' + name)
+          print('BUILD670 V6.3.45 verified:', actual)
+          PY
+      - name: Install test dependencies
+        run: python -m pip install -r requirements.txt pytest
+        working-directory: /tmp/build670-v645
+      - name: Python regression tests
+        run: python -m pytest -q tests
+        working-directory: /tmp/build670-v645
+      - name: JavaScript regression tests
+        shell: bash
+        working-directory: /tmp/build670-v645
+        run: |
+          for f in tests/test_*.cjs; do node "$f"; done
+      - name: Push verified sources to deployment branch
+        shell: bash
+        run: |
+          git config user.name 'build670-ci'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin deploy/v6.3.45 || true
+          if git show-ref --verify --quiet refs/remotes/origin/deploy/v6.3.45; then
+            git switch -C deploy/v6.3.45 origin/deploy/v6.3.45
+          else
+            git switch -c deploy/v6.3.45
+          fi
+          rsync -a --delete --exclude='.git' /tmp/build670-v645/ ./
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No source changes'
+            exit 0
+          fi
+          git commit -m 'release: BUILD670 V6.3.45 verified source'
+          git push origin HEAD:refs/heads/deploy/v6.3.45
