@@ -1,0 +1,17 @@
+# BUILD670 V3 — Render Blueprint (staging-ready, no automatic production deploy)
+services:
+  - type: web
+    name: build670-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /ready
+    autoDeploy: false
+    envVars:
+      - key: BUILD670_PUBLIC_SERVER
+        value: "1"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: BUILD670_USER_TOKEN_HASHES
+        sync: false
+# Set BUILD670_USER_TOKEN_HASHES in Render before deploying.
+# Do not store API keys, user tokens, or token hashes in this repository.
