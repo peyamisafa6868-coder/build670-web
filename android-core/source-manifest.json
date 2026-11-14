@@ -1,0 +1,433 @@
+{
+  "apk_sha256": "dfb90d35efdf9e064e3b9080d04e3b16a6203c8c9e504c6ee35351170661f97b",
+  "files": [
+    {
+      "path": "tr/borsatakip/v5/analysis/BistPublicationPolicy.kt",
+      "sha256": "cca2feb9591a17ad763f0b521e4c87a9c124063541cd5d28f25bbd1d9e9497fc",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/BreakoutVolumeEngine.kt",
+      "sha256": "15742d8608ad5cb53be205343bd3e80135d6f6f1eac1c33ff9df939333a935d5",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ChartIndicators.kt",
+      "sha256": "845a457e28bc606211982c55de6ab520d3db40b9ea0072011292430fa4f72f2c",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ChartSupportResistance.kt",
+      "sha256": "f8bd3b3281e693bd5fafa03495e64deb9e7dff5a5cae1623ab603e78661d34fb",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ChartTimeframe.kt",
+      "sha256": "2cc4b6cad8fa8f41b7e68f1e4e5c66bc3fe7132658b8f74308b1c8d45c754a2c",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/DecisionPricePolicy.kt",
+      "sha256": "0a28018af10ee2d97c6c2046e93c5f894432f31e44cd96be603959049c99b66d",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ExtendedStockEvidence.kt",
+      "sha256": "bd203d717f7a871ba25d531ffffab29508db8bd8e18af708e06b18b5761d0f8e",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/LinearTrendAnalyzer.kt",
+      "sha256": "b4c23318944c7e268992e9036b683375f84b3c370c47375c2b55690a4afa0692",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/MarketRegimeEngine.kt",
+      "sha256": "e1f595f377b1aaf29c50a6ad0a69eaa460e5677241d0e19df33fcfacb012e99a",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/MtfConsensusEngine.kt",
+      "sha256": "c28ed05d795ebd0caa9e47a4c17f67221682f79258c06bf8b783499e2cadd129",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/MultiTimeframeSignalAnalyzer.kt",
+      "sha256": "a53393f8e760b057697febbd95210db5e599081c0140ae21abff141f9d06bd48",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/Opportunity2Presentation.kt",
+      "sha256": "af1f921fd08b5f44c566b4b850130bfddaa5dcd7e98d26940ffa33fd0d275ed2",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/OpportunityDiscoveryPresentation.kt",
+      "sha256": "54b919b2f7d9a583822860cc10c6e0dae9da305e78ac5ea4e7c666185680d04f",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/OpportunityEngine.kt",
+      "sha256": "9b3cd1d21fd2bccd08f413afd8984f65ffdce54fdb8c2309b4d153b64a922d04",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/OpportunityFilterPolicy.kt",
+      "sha256": "042e8bc700ae7f02dbd90c28166ea98975e584ad9118572783ffa32be208e925",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/OpportunityPublicationPolicy.kt",
+      "sha256": "2a279f0645aac1763394d76ccfe7965cda5a163c6af4eff9c0f777bddec6665b",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/OpportunityRankingPolicy.kt",
+      "sha256": "b5a16f0fac3e66db4488b51374a60cf6183eb106f60836f89744b3c340725a74",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/OpportunityTrendPresentation.kt",
+      "sha256": "2b5d6fbbf6c9922b62463f97866f9af708915541a12b90e37255746d334d2231",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/StrategyComparisonMath.kt",
+      "sha256": "c9869c3e78c390a0a5009891356eda2930c2021dd73107737c4602f783c68825",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/StrategyOptimizationEngine.kt",
+      "sha256": "0667a233ae59ca2586b5db538933661ec9f5e7aaa85393aca8d3e6422228de7a",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/StrategyProfileEngine.kt",
+      "sha256": "52ed201ee486ff8e98d352d43b2bf90d49d7da5ec85c0e4c8c341b0eb303ef6d",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/TechnicalAnalyzer.kt",
+      "sha256": "7736193f67b284139940ae08eeedd64a12fd08bde8c57bec0f3b1d06b987b896",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/TradeForwardEngine.kt",
+      "sha256": "1b51ba18d5a67dc712d5d18012c61c9e4e0addfde9b7055512411ccccb2f945a",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/TrendUiPolicy.kt",
+      "sha256": "9dad823110d267041e3348bb580e830fb795e77c6f341b82518d19c26bb2e96d",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/V540FinalDecisionFlow.kt",
+      "sha256": "d93baf679eb245b9b8c787e2b6e25b7096d93cf7aad5cb9c283b0c7fc7bbef49",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ViopAnalysisCatalog.kt",
+      "sha256": "f14418e47b08325249095b1150bc531814259c3f4dc0c0be3346039effafcd93",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ViopBreakoutPolicy.kt",
+      "sha256": "79b7507b0ddadbc59c58ab3cef5f3388cce16e3a03c7ea555c6cda4cec0ec894",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ViopContractCategoryPolicy.kt",
+      "sha256": "c2874e2ee757fd17ef48136eb44df7daaa937552ed349f0fd5f0d508d12f4e3e",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ViopContractSearch.kt",
+      "sha256": "e2ca35b60f2bd93fbb467f21f92a75016e99f79519152085e57cafc476c69bd1",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ViopDashboardPolicy.kt",
+      "sha256": "c5bf4d37f1794a9a1f62c892197320c88b0b19d7f51ff9fd0b7b4c7df5900d86",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ViopFinalQuotePolicy.kt",
+      "sha256": "834dd6b4df2abfea07ed3db9cc73475548a5319fab2c76670d567fbca32b6bfe",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ViopRiskRewardPolicy.kt",
+      "sha256": "8927acb114043aabfe4221892cb99228b076c2ef2b3936a160ad0262afae8e43",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ViopScanner.kt",
+      "sha256": "91f2df8e494f9efbe99777f8f5173431ea2ff83f1b971a3f187c7840c721ccf0",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ViopUnderlyingScanner.kt",
+      "sha256": "4111a36ddc43f41c46116dc4e768ca36833bf740869789a0ddabbe01f2bd1d60",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/ViopV6Policy.kt",
+      "sha256": "aa0e64fc7aaadbf50d59c1df36e3897a58c4238b0782014dc2532a439bb67ef2",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/ConfidenceEngine.kt",
+      "sha256": "acafc1485ef9631abd7bba7509ee41053da24b198de96e65c3932f5e9bc20397",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/MomentumEngine.kt",
+      "sha256": "4b8b1d4bcef44f699435ac6a217f09bae423c7b63a370e2c910ccc6635978307",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/MultiTimeframeEngine.kt",
+      "sha256": "cd8e2ff5dfa93bbb6b26ff4c8f3bf4ba8d565fe4c36da0c1c8511a5116d063c0",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/OpenInterestEngine.kt",
+      "sha256": "caf23a6dbe3c46d430183438c6937258515aceba9d40ff8d9fdb62a6e6e67be0",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/RiskEngine.kt",
+      "sha256": "75d33cdcc6920f5f5cc4856e0d9cf00e8bf95e54302085206a8a10e2bdab37c0",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/ScoreNormalizer.kt",
+      "sha256": "73c409dbd54a72cba1f6922e403158b106db04cb7d737d71662b5207124adc23",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/ScoringConfig.kt",
+      "sha256": "bb4db78d20ea3906ab20caf3d0bd9acd6c9dd61918bac65cf1a20158ef6ee113",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/SignalDecisionEngine.kt",
+      "sha256": "2fa3e7ae2efe9df2f22d169800916b615e272ca82a9b756620b9ec23d3c1d8be",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/SignalModels.kt",
+      "sha256": "bd0e25d43cadc4489cfe8a035535dd24bc8bc82b492f64739f4bceca31281cef",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/StructureEngine.kt",
+      "sha256": "6840e2b9fa6d7ad38f06aef55d15c6d9d62173ace9a2f63f7f8de8f191df2d25",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/TrendEngine.kt",
+      "sha256": "1aad2f2492c42c48713f9dc981f600992981bc70dda9926d29a21e3d3de78d97",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/V531CalculationEngine.kt",
+      "sha256": "a049944afc4a18fb367eac14b9f59550c4d7e2907db7a54a0bf3651c29f1a47b",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/V531ContextEngine.kt",
+      "sha256": "0c73d5bfa12dc2b52c904e049baa66597bf0061f38766b9512c5d62d3588b236",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/VolatilityEngine.kt",
+      "sha256": "9ac0a12b6150e1d7f7125739c6dcb488630fa1f7a507cc3b0165e5dfe9db7ff1",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v531/VolumeEngine.kt",
+      "sha256": "f304bb366fc0878baba5c276ec63a4f3229c66023f11da8e1e17d22446218b4e",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v533/V533TemporalCausality.kt",
+      "sha256": "da7fb5ae110354afb293b03fb898c4d3578341b65d68709116f8d0431147a67a",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v539/V539RiskRewardGate.kt",
+      "sha256": "f3acc0b1484976d58f66a4f050b508d86bbcb9180a791df5c5f63a944226beee",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v540/V540FreshnessPolicy.kt",
+      "sha256": "80fddd816742dc2b6e1f4ebba4605ba0d04d90a06f9ba86ce782aad3b256c3df",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v540/V540LiquidityEngine.kt",
+      "sha256": "3cb8c76ec87a142e1c433367354bf2089dc094dd42f5d4c08c98a1cbabceb549",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/analysis/v540/V540RankingEngine.kt",
+      "sha256": "db2b22dee99504c02604466a04cd7abcbe1d76a9ac1b73568b12af9f3c416dbb",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/BackendHttpDiagnostic.kt",
+      "sha256": "5c05e8199eed4bf55c6dcdc85f3ac334216940f74c3d753faba3788b0b4fe9c4",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/CandleReadinessPolicy.kt",
+      "sha256": "a9e273f1b6613f778d8936a9ffc01bc1c23b194e652830d0abc0361ceae7ae80",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/ForwardOutcomeMatcher.kt",
+      "sha256": "3519732c152cc5d77d51d722a90447971743a20c0f002bad76b139b75d9c5ef8",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/FullUniversePolicy.kt",
+      "sha256": "0b9d61d32f53b6e30bac235f9f4ad36886131664658d8fae286bcd993ec48d25",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/MarketDataProvider.kt",
+      "sha256": "7408ca6b27108d530d733f40ca9730fc9cb5d7185d1c06039d9a36df78ee90f5",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/MtfHistoryCache.kt",
+      "sha256": "e826b5efcd02378a7ab656f42dc67bc80faa3afe5035d98b1321c11d4a5c961e",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/RealTimeIntegrityPolicy.kt",
+      "sha256": "6cb408d983182e52104c79316ec31cd3ee1c90a2fde4475f39396d8b053ad033",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/ScanTelemetry.kt",
+      "sha256": "60c7a3be6853f80de00cdf64bcdd4daaae991132c942f3dfb14562994c4e7e94",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/ScanTimeframe.kt",
+      "sha256": "3b9704ef2a3fc03cdcc48a56459eb1b0962286853b9a9f9f23a96f1991791c21",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/SignalHistoryPolicy.kt",
+      "sha256": "f8bf996014c626ce3e9a77a04b075c8c53a0cc6c59070e9da35321588be83ddc",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/SignalHistoryStore.kt",
+      "sha256": "cb0c815c1921dd1e94fe400954d017ff303d939171b806431d8af4cbe78de134",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/StockQuotePolicy.kt",
+      "sha256": "97e3e7194d4d90af653432aac7c152737ef7f88a9467c15e35f3c11fe457e20d",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/StrategyWeightStore.kt",
+      "sha256": "ef8bd4405ec682590798d1abe5cf8a74b786d28719164a1e8016a7c027279b2e",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/SymbolUniverseTools.kt",
+      "sha256": "6bb5e4505125db1f6091f11ff6c47e4dcc25e4b1527fa4d1cf44a76d3e58f5ef",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/ViopBuiltinContractCatalog.kt",
+      "sha256": "492e7d671a1bd01bedb7c157bd4ad8293f773decb514cc157b25b80996320106",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/ViopContractSelector.kt",
+      "sha256": "ea63187846c9d2d697339069c69046ee6199104781fc6e78e0d583ecea291e3f",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/ViopHistoryIntegrityPolicy.kt",
+      "sha256": "b4cc19518ebf7766187060548dc900dc247998d42e17c76f8ce4ba92e068c0bb",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/ViopManualPositionStore.kt",
+      "sha256": "bc92284d5fb8fcbb71de3fc382f8a0651f3482bf574e6cf1e3aea83118c06fa9",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/ViopQuoteDisplayPolicy.kt",
+      "sha256": "9e47c44b4c6c7a698e81981662f4506291eff5837d1bc776f71fda7689ee1002",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/ViopStrategyDecisionService.kt",
+      "sha256": "f577a51a478bb68d93ab74be2a00cd27b99887a177bb2395e6c94e5541ed6a49",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/data/ViopStrategyHistoryStore.kt",
+      "sha256": "434e73a1de4b0813420ccd9e4a34efde78af6c193791a3a816fcab161f5b1fd3",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/model/Models.kt",
+      "sha256": "b4cf19525dc10933ebadb3b4ec16ee4e2b85a22f1bb8e6a9ffc39976e0db9ecc",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/scan/BistScanGate.kt",
+      "sha256": "25522f0f279b7e25b2afc0acc9e07ab5451f1ea6fad926cc9e08950d39764954",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/scan/BistScanner.kt",
+      "sha256": "16b23b444641fca805ad314982182f88fac24722e2f2b7b672defe98f0b7328d",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/scan/CheapStockPolicy.kt",
+      "sha256": "86c7564c0d168adfa3c950578f9c9be6aa32b389c82ffb998300c26439e9cd02",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/scan/CheapStockTrendPolicy.kt",
+      "sha256": "99014bf95d1472b2815b30551ce109d573de607ae3ac62a06574c3fd3015a909",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/scan/FundamentalValuationEngine.kt",
+      "sha256": "940f02493b4f538ccceabe011f81b8facfe72b2066ca0f1f40caeaf0b2dc9c7c",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/scan/HistoryRecorder.kt",
+      "sha256": "1a566f46c061d41dae1a5d6c1f19f518ce4d2874e514906c56571fec3fd7eea5",
+      "kind": "unchanged_android_source"
+    },
+    {
+      "path": "tr/borsatakip/v5/scan/ValueOpportunityScoreEngine.kt",
+      "sha256": "1f8ef96431ed09e1d2862f3769d0e4591fcb912cde48f651f322ccea037e6890",
+      "kind": "unchanged_android_source"
+    }
+  ],
+  "extracted_platform_contracts": [
+    "ProviderFailureCode from ProviderReadinessService.kt",
+    "ProviderException from MobileMarketDataProvider.kt"
+  ],
+  "platform_adapters": [
+    "android.os.SystemClock",
+    "android.util.Log"
+  ]
+}

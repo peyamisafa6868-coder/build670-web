@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict');
+const c=require('../viop-catalog.js');
+const now=Date.parse('2026-11-07T12:00:00Z');
+const all=c.current(now);
+assert.equal(all.length,66);
+assert.equal(new Set(all.map(x=>x.underlying)).size,22);
+assert.equal(all.filter(x=>x.category==='BIST30').length,51);
+assert.equal(all.filter(x=>x.category==='FX').length,6);
+assert.equal(all.filter(x=>x.category==='COMMODITY').length,9);
+assert.equal(all.every(x=>x.price===null&&x.verified===false),true);
+assert.equal(c.find({query:'ASELS',now}).length,3);
+assert.equal(c.find({query:'USD',category:'FX',now}).length,3);
+assert.equal(c.find({category:'FX',now}).length,6);
+assert.throws(()=>c.find({category:'BAD',now}));
+assert.equal(new Date(c.expiryUtc(2026,11)).toISOString(),'2026-11-30T15:10:00.000Z');
+console.log(JSON.stringify({status:'passed',cases:11}));

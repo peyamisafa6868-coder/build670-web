@@ -1,0 +1,60 @@
+name: Downloadable BIST VIOP source and program
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/download-packages.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify and build original Kotlin core for portable WEB ZIP
+        run: python scripts/build_core.py --test
+      - name: Create full source ZIP and startable WEB program ZIP
+        shell: bash
+        run: |
+          mkdir -p dist
+          git archive --format=zip --prefix=BIST-VIOP-KAYNAK/ HEAD -o dist/BIST-VIOP-WEB-TAM-KAYNAK.zip
+          python - <<'PY'
+          import zipfile,subprocess
+          from pathlib import Path
+          sha=subprocess.check_output(['git','rev-parse','--short','HEAD'],text=True).strip()
+          files=subprocess.check_output(['git','ls-files','-z']).split(b'\0')
+          out=Path('dist/BIST-VIOP-WEB-PROGRAM.zip')
+          with zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=7) as z:
+              for raw in files:
+                  if not raw: continue
+                  name=raw.decode()
+                  if name.startswith('.github/'): continue
+                  z.write(name,'BIST-VIOP-WEB-PROGRAM/'+name)
+              z.write('android-core/build/android-core.jar',
+                      'BIST-VIOP-WEB-PROGRAM/android-core/build/android-core.jar')
+              z.writestr('BIST-VIOP-WEB-PROGRAM/PAKET-BILGISI.txt',
+                         f'BUILD670 WEB PROGRAM\\nGitHub commit: {sha}\\n'
+                         'Windows: BASLAT_WINDOWS.bat\\n'
+                         'macOS/Linux: sh BASLAT_LINUX_MAC.sh\\n'
+                         'Python 3.12 ve Java 17 gerekir.\\n'
+                         'Tarayici http://127.0.0.1:8000 adresini acar.\\n'
+                         'Program ZIP derlenmis Kotlin cekirdegini icerir.\\n'
+                         'Gecikmeli/tarihsel veri; lisansli canli baglanti yok.\\n')
+          print('Source and program ZIP:',*[str(p)+' '+str(p.stat().st_size) for p in Path('dist').glob('*.zip')])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BIST-VIOP-WEB-SOURCE-AND-PROGRAM
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 90

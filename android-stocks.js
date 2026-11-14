@@ -1,0 +1,43 @@
+/* BUILD670 StocksActivity: scan observations, independent quote refresh and local view order. */
+(() => {
+ 'use strict';const view={filter:'ALL',order:'SOURCE',bist30:false,sector:null},quotes=new Map();let generation=0;
+ const istDay=t=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(t);
+ const usable=d=>d&&Number.isSafeInteger(d.fetchedAt)&&Date.now()>=d.fetchedAt&&Date.now()-d.fetchedAt<=3600000&&istDay(Date.now())===istDay(d.fetchedAt)&&d.bist30?.length===30;
+ async function render(ctx){
+  const {$,text,show,bind,action,message,nativeItem,navigate,favorite,favoriteSymbols,api,num,date}=ctx,ticket=++generation,current=()=>ticket===generation&&ctx.current();let observations=[],directory=null;
+  const quote=x=>quotes.get(x.symbol)||x.displayQuote;
+  bind('stocksScanCard',()=>navigate('bist_scan'));bind('stocksScanAction',()=>navigate('bist_scan'));
+  const paint=()=>{
+   if(!current())return;const q=($('stocksSearch')?.value||'').toLocaleUpperCase('tr-TR'),list=$('stocksList');if(!list)return;list.replaceChildren();
+   const available=usable(directory),records=BistNativeMarket.order(observations.filter(x=>(x.symbol+' '+(x.companyName||directory?.names?.[x.symbol]||'')).toLocaleUpperCase('tr-TR').includes(q)&&BistNativeMarket.matches(x,view.filter)&&(!view.bist30||available&&directory.bist30.includes(x.symbol))&&(!view.sector||available&&directory.memberships?.[view.sector]?.includes(x.symbol))),view.order,quote);
+   text('stocksDataSummary',observations.length+' gecikmeli fiyat gözlemi');if(!observations.length)text('stocksDataSummary','Henüz fiyat gözlemi yok');
+   text('stocksStatus',!observations.length?'TARAMA SONUCU YOK • BIST taramasını başlatın; fırsat bulunamadığı henüz doğrulanmadı.':records.length+' sonuç • '+view.filter+' • hisse detayını açmak için dokunun');show('stocksEmptyState',!records.length);text('stocksEmptyTitle',observations.length?'Eşleşen kayıt yok':'Hisse listenizi oluşturun');text('stocksEmptyMessage',observations.length?'Bu filtrede eşleşen gözlem yok. Gecikmeli teknik yön için Teknik ↑ / ↓ seçin.':'BIST taraması tamamlandığında sonuçlar burada görünür.');text('stocksEmptyAction',observations.length?'Filtreleri temizle':'Taramayı aç  ›');bind('stocksEmptyAction',()=>{if(!observations.length)navigate('bist_scan');else{view.filter='ALL';view.bist30=false;view.sector=null;$('stocksSearch').value='';paint();}});
+   const add=x=>{
+    const d=x.trendDisplay,t=d?.trend,c=BistNativeMarket.change(x,quote(x)),candles=x.candles||[],closes=candles.slice(-36).map(x=>x.close).filter(Number.isFinite),open=()=>navigate('stock_detail',{symbol:x.symbol,opportunity:x});
+    const card=nativeItem('stock_compact',{stockSymbol:x.symbol,stockCompany:x.companyName||directory?.names?.[x.symbol]||ctx.company(x.symbol)||'Şirket adı doğrulanmadı',stockFavorite:favoriteSymbols().includes(x.symbol)?'★':'☆',stockPrice:num(BistNativeMarket.price(x,quote(x))),stockChange:c==null?'—':(c>0?'+':'')+num(c)+'%',stockVolume:'Hacim '+(Number.isFinite(x.technical?.volumeRatio)?num(x.technical.volumeRatio,1)+'x':'—'),stockDirection:(t?.arrow||'')+' '+(t?.label||'Yön doğrulanmadı')+'\n'+(d?.dataLabel||'DOĞRULANMADI')+' • '+date(quotes.get(x.symbol)?.timestamp||candles.at(-1)?.timestamp||x.exchangeTimestamp),stockMiniChartState:closes.length<2?'Mum verisi yok':new Set(closes).size===1?'Yatay seri':''},open,{stockFavorite:()=>{favorite(x.symbol);paint();},stockMore:open});
+    list.append(card);const find=id=>card.querySelector('[data-apk-id="'+id+'"]');if(find('stockMiniChartState'))find('stockMiniChartState').hidden=closes.length>=2&&new Set(closes).size>1;if(find('stockChange'))find('stockChange').style.color=c>0?'#00f080':c<0?'#ff4545':'#afc2d4';
+    if(t){const rgb=[t.red,t.green,t.blue],a=(t.rowFillAlpha||0)/255;card.style.background='rgb('+[3,22,25].map((n,i)=>Math.round(n*(1-a)+rgb[i]*a)).join(',')+')';card.style.outline='1px solid rgba('+rgb.join(',')+','+(t.borderAlpha||45)/255+')';card.style.outlineOffset='-1px';card.style.borderRadius='8px';if(t.strengthLevel>0)find('stockSymbol').style.color='rgb('+rgb.join(',')+')';find('stockDirection').style.color='rgb('+rgb.join(',')+')';}
+    requestAnimationFrame(()=>{if(card.isConnected)BistNativeMarket.sparkline(find('stockMiniChart'),candles,t);});
+   };
+   let offset=0;const append=()=>{for(const x of records.slice(offset,offset+100))add(x);offset+=100;};append();if(records.length>100){const more=action('Sonraki 100 kayıt',()=>{more.remove();append();if(offset<records.length)list.append(more);});list.append(more);}
+   for(const [id,f] of [['stocksFilterAll','ALL'],['stocksFilterLong','LONG'],['stocksFilterShort','SHORT'],['stocksFilterTrendUp','TREND_UP'],['stocksFilterTrendDown','TREND_DOWN']])if($(id)){BistNativeMarket.chip($(id),view.filter===f,f==='SHORT');}
+   text('stocksFilterBist30',available?'BIST 30':'BIST 30 · ?');for(const [id,on] of [['stocksFilterBist30',view.bist30],['stocksFilterBank',view.sector==='XUBNK'],['stocksFilterIndustry',view.sector==='XUSIN'],['stocksFilterTech',view.sector==='XUTEK']])if($(id))BistNativeMarket.chip($(id),on);
+   text('stocksIndexNotice',available?'KAP üyelik • '+date(directory.fetchedAt)+(directory.cached?' • önbellek':''):'Yahoo Finance • Gecikmeli • Üyelik doğrulanmadı');
+  };
+  if($('stocksSearch'))$('stocksSearch').oninput=paint;
+  for(const [id,f] of [['stocksFilterAll','ALL'],['stocksFilterLong','LONG'],['stocksFilterShort','SHORT'],['stocksFilterTrendUp','TREND_UP'],['stocksFilterTrendDown','TREND_DOWN']])bind(id,()=>{view.filter=f;if(f==='ALL'){view.bist30=false;view.sector=null;}paint();});
+  bind('stocksSort',()=>{const d=document.createElement('dialog');d.className='terminal-dialog';for(const [key,label] of [['SOURCE','Tarama sırası'],['SYMBOL','Sembol A–Z'],['CHANGE','Günlük değişim ↓'],['PRICE_ASC','En ucuz fiyat ↑']])d.append(action(label,()=>{view.order=key;d.close();paint();}));d.addEventListener('close',()=>d.remove());document.body.append(d);d.showModal();});
+  bind('stocksFilterBist30',()=>{if(!usable(directory)){message('BIST 30 üyelik verisi doğrulanmadı. Endeks/üyelik yenile ile KAP üyeliğini alın.');return;}view.bist30=!view.bist30;paint();});
+  for(const [id,code] of [['stocksFilterBank','XUBNK'],['stocksFilterIndustry','XUSIN'],['stocksFilterTech','XUTEK']])bind(id,()=>{if(!usable(directory)||!directory.memberships?.[code]?.length){message('Bu grup için güncel KAP endeks üyeliği alınamadı. Üyelik uydurulmadı.');return;}view.sector=view.sector===code?null:code;paint();});
+  async function loadDirectory(refresh=false){try{const d=await api('/api/stocks/directory?refresh='+(refresh?'1':'0'));if(current()){directory=d;paint();}}catch(e){if(current())text('stocksIndexNotice',e.message);}}
+  bind('stocksDataRefresh',async()=>{const b=$('stocksDataRefresh');if(b.disabled)return;b.disabled=true;try{await Promise.allSettled([ctx.references(),loadDirectory(true)]);if(current()){ctx.indices();paint();}}finally{b.disabled=false;}});
+  bind('stocksQuoteRefresh',async()=>{
+   if(!observations.length){text('stocksStatus','Önce hisse taramasını çalıştırın.');return;}const button=$('stocksQuoteRefresh');if(button.disabled)return;button.disabled=true;let done=0,ok=0,cursor=0;const failures=[],start=Date.now();
+   try{await Promise.all([0,1,2,3].map(async()=>{while(current()&&cursor<observations.length&&Date.now()-start<60000){const x=observations[cursor++];try{const q=await api('/api/stocks/quote?symbol='+encodeURIComponent(x.symbol));if(q.symbol!==x.symbol||q.realtime!==false||q.delayed!==true||!Number.isFinite(q.price)||q.price<=0)throw Error('Fiyat kimliği doğrulanamadı.');if(current()){quotes.set(x.symbol,q);ok++;paint();}}catch(e){failures.push(x.symbol+': '+e.message);}done++;if(current())text('stocksStatus','Hisse fiyatları yenileniyor '+done+'/'+observations.length+' • analiz kararı korunuyor');}}));if(current()){const remaining=observations.length-done;text('stocksStatus',ok+'/'+observations.length+' gecikmeli fiyat • '+failures.length+' hata'+(remaining?' • '+remaining+' zaman sınırında bekledi':'')+' • analiz kararı korunuyor');if(failures.length)message(failures.slice(0,20).join('\n'));}}finally{button.disabled=false;}
+  });
+  paint();ctx.indices();
+  if(!ctx.reference)loadDirectory();
+  try{const job=ctx.job();if(job&&!ctx.reference){for(let p=1;p<=20;p++){const data=await api('/api/scans/'+job.id+'/results?filter=ALL&page='+p+'&size=100');if(!current())return;observations.push(...data.results);if(observations.length>=data.total)break;}paint();}}catch(e){if(current())text('stocksStatus',e.message);}
+ }
+ window.AndroidStocks={render,quotes};
+})();

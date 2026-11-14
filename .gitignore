@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+test-results/
+.cache/
+android-core/build/
+runtime-data/
+node_modules/

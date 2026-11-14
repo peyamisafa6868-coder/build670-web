@@ -1,0 +1,121 @@
+name: Web calculation and data integrity
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Build unchanged Android core and run original JUnit tests
+        run: python scripts/build_core.py --test
+      - name: Server, failure branches and strict CSP
+        run: python -m unittest discover -s tests -v
+      - name: Android Kotlin golden comparisons
+        run: |
+          node tests/test_android_parity.cjs
+          node tests/test_signal_parity.cjs
+          node tests/test_provenance.cjs
+          node tests/test_ledger.cjs
+          node tests/test_viop_catalog.cjs
+          node tests/test_viop_ledger.cjs
+          node tests/test_preferences.cjs
+          node tests/test_market_presentation.cjs
+          node tests/test_trend_glow.cjs
+          node tests/test_chart_support_levels.cjs
+          node tests/test_chart_integrity.cjs
+          node tests/test_chart_canvas_upgrade.cjs
+          python tests/verify_chart_math.py
+      - name: Mouse interaction unit regressions
+        run: node tests/chart_mouse_unit.cjs
+      - name: JavaScript syntax
+        run: |
+          node --check browser-session.js
+          node --check browser-login.js
+          node --check tests/browser_sessions.cjs
+          node --check stock-analysis.js
+          node --check yahoo-auto.js
+          node --check viop-ledger.js
+          node --check terminal.js
+          node --check android-layout.js
+          node --check chart-support-levels.js
+          node --check chart-integrity.js
+          node --check android-chart.js
+          node --check tests/browser_chart_support_levels.cjs
+          node --check android-programmatic.js
+          node --check android-preferences.js
+          node --check android-fullscreen.js
+          node --check android-market.js
+          node --check android-stocks.js
+          node --check android-history.js
+          node --check android-technical.js
+          node --check android-results.js
+          node --check android-app.js
+          node --check tests/system_report_counts.cjs
+          node tests/system_report_counts.cjs
+          node --check tests/browser_mobile_readability.cjs
+          node --check tests/browser_system_report.cjs
+          node --check tests/browser_scan_completion_trends.cjs
+          node --check tests/browser_scan_quota_recovery.cjs
+      - name: Install pinned browser test runtime
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx playwright install --with-deps chromium
+      - name: Browser regressions and responsive reference states
+        run: |
+          # Run each isolated fixture; report every regression in a single CI job.
+          failed=0
+          run_case() {
+            if node "$1"; then
+              echo "PASS $1"
+            else
+              echo "::error file=$1::Browser regression failed"
+              failed=$((failed+1))
+            fi
+          }
+          run_case tests/browser_sessions.cjs
+          run_case tests/browser_company_actions.cjs
+          run_case tests/browser_financial.cjs
+          run_case tests/browser_market_failures.cjs
+          run_case tests/browser_offline_empty.cjs
+          run_case tests/browser_repairs.cjs
+          run_case tests/browser_preferences.cjs
+          run_case tests/browser_fullscreen.cjs
+          run_case tests/browser_stocks.cjs
+          run_case tests/browser_news.cjs
+          run_case tests/browser_simulation.cjs
+          run_case tests/browser_history.cjs
+          run_case tests/browser_technical.cjs
+          run_case tests/browser_results.cjs
+          run_case tests/browser_scan_completion_trends.cjs
+          run_case tests/browser_scan_quota_recovery.cjs
+          run_case tests/browser_chart_state.cjs
+          run_case tests/browser_chart_support_levels.cjs
+          run_case tests/chart_mouse.cjs
+          run_case tests/browser_production_routes.cjs
+          run_case tests/browser_mobile_readability.cjs
+          run_case tests/browser_system_report.cjs
+          echo "Browser regression failures: $failed"
+          test "$failed" -eq 0
+      - name: Save raw browser results and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build670-browser-${{ github.sha }}
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 90

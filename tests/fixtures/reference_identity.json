@@ -1,0 +1,45 @@
+{
+  "apk_sha256": "dfb90d35efdf9e064e3b9080d04e3b16a6203c8c9e504c6ee35351170661f97b",
+  "recorded_source_commit": "8e21475d448f4dea112589b16a6b32f2741b2ff5",
+  "reference_files": {
+    "ChartIndicators.kt": {
+      "sha256": "845a457e28bc606211982c55de6ab520d3db40b9ea0072011292430fa4f72f2c",
+      "source_path": "android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/ChartIndicators.kt",
+      "matches_recorded_manifest": true
+    },
+    "ChartTimeframe.kt": {
+      "sha256": "2cc4b6cad8fa8f41b7e68f1e4e5c66bc3fe7132658b8f74308b1c8d45c754a2c",
+      "source_path": "android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/ChartTimeframe.kt",
+      "matches_recorded_manifest": true
+    },
+    "ExtendedStockEvidence.kt": {
+      "sha256": "bd203d717f7a871ba25d531ffffab29508db8bd8e18af708e06b18b5761d0f8e",
+      "source_path": "not listed in recorded manifest",
+      "matches_recorded_manifest": null
+    },
+    "ReadableStockAnalysis.kt": {
+      "sha256": "cf76cf2376e91079517e4e61ae2c9dbfa59350f82acfe07b9dbd31cd5483de5e",
+      "source_path": "android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/ReadableStockAnalysis.kt",
+      "matches_recorded_manifest": true
+    },
+    "SignalDecisionEngine.kt": {
+      "sha256": "2fa3e7ae2efe9df2f22d169800916b615e272ca82a9b756620b9ec23d3c1d8be",
+      "source_path": "android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/v531/SignalDecisionEngine.kt",
+      "matches_recorded_manifest": true
+    },
+    "ScoringConfig.kt": {
+      "sha256": "bb4db78d20ea3906ab20caf3d0bd9acd6c9dd61918bac65cf1a20158ef6ee113",
+      "source_path": "android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/v531/ScoringConfig.kt",
+      "matches_recorded_manifest": true
+    }
+  },
+  "compiler": "Kotlin 2.1.0 / JVM 17",
+  "note": "Candle.kt is an isolated copy of the six numeric Candle fields; reference algorithms are copied unchanged.",
+  "golden_outputs": {
+    "android_golden.json": "5ed855edfdfbb63bc5c4fe0902f4c78bc10294004786954fe206e3755b18c8dc",
+    "android_signal_golden.json": "d4a134c381e5f98ce26ae071337314ee4d763c5f045cd7dcfab3ce7c5ee349cd"
+  },
+  "chart_comparisons": 11975,
+  "signal_cases": 580,
+  "signal_comparisons": 4640
+}

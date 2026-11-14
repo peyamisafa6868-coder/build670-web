@@ -1,0 +1,14 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
+let queued=[],timers=[],full=0;const ctx=new Proxy({measureText:()=>({width:40})},{get:(o,k)=>o[k]||(()=>{})});
+const canvas={style:{},setAttribute(){},getContext:()=>ctx,setPointerCapture(){},getBoundingClientRect:()=>({left:20,width:900})};
+const el={clientWidth:900,clientHeight:550,isConnected:true,querySelector:()=>canvas};canvas.parentElement=el;
+const context={window:{},Intl,Date,Math,Number,Map,WeakMap,devicePixelRatio:1,getComputedStyle:()=>({}),validBars:()=>true,BistTerminal:{api:()=>new Promise(()=>{})},requestAnimationFrame:f=>(queued.push(f),queued.length),cancelAnimationFrame(){},setTimeout:f=>(timers.push(f),timers.length),clearTimeout(){},calculateIndicators:bars=>Object.fromEntries(['ema9','ema21','ema20','ema50','ema200','sma50','sma200','upper','lower','rsi','macd','signal','histogram','atr','volume20','vwap'].map(k=>[k,bars.map(()=>100)]))};
+vm.runInNewContext(fs.readFileSync('android-chart.js','utf8'),context);const chart=context.window.AndroidPriceChart;
+chart.mount(el,{candles:Array.from({length:300},(_,i)=>({timestamp:1700000000000+i*86400000,open:100,high:102,low:99,close:101,volume:1000})),lastBarClosed:true,interval:'1d'},{onFullscreen:()=>full++});
+const flush=()=>{const q=queued;queued=[];q.forEach(f=>f());};const e={pointerId:1,pointerType:'mouse',button:0,clientX:400,clientY:100};
+canvas.onpointerdown(e);assert.equal(timers.length,0);canvas.onpointermove({...e,clientX:520});flush();assert.ok(chart.getState(el).pan>0);canvas.onpointerup({...e,clientX:520});
+let s=chart.getState(el),f=(400-20-s.bounds.left)/(s.bounds.right-s.bounds.left),anchor=s.bounds.start+f*(s.bounds.count-1);
+canvas.onwheel({...e,deltaY:-100,deltaMode:0,preventDefault(){}});flush();s=chart.getState(el);assert.ok(Math.abs(s.bounds.start+f*(s.bounds.count-1)-anchor)<=1);
+canvas.onpointerdown(e);canvas.onpointerup(e);flush();assert.equal(s.selected,s.bounds.start+Math.round(f*(s.bounds.count-1)));
+canvas.onpointerdown(e);canvas.onpointercancel(e);assert.equal(s.pointer,null);assert.equal(s.pointers.size,0);assert.equal(full,0);
+console.log('PASS: mouse hold, pan, anchored zoom, nearest candle, pointer cancellation (mock canvas; not browser acceptance)');

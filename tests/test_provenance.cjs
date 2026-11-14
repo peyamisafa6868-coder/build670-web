@@ -1,0 +1,18 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+const context={offlineIsTestSource:s=>typeof s==='string'&&s.startsWith('SENTETİK'),offlineError:m=>{throw Error(m)},offlineMergeDataset:()=>{throw Error('Closed observations remain protected')}};
+vm.runInNewContext(html.slice(html.indexOf('function offlineMergeForImport('),html.indexOf('function offlineIngest(')),context);
+vm.runInNewContext(html.slice(html.indexOf('function offlineYahooSource('),html.indexOf('function offlineQuoteForSeries(')),context);
+const incoming={source:context.offlineYahooSource({symbol:'ASELS.IS',sourceInterval:'5m',interval:'15m'}),candles:[{close:200}]};
+const legacy={source:'YAHOO FINANCE (RESMI DEGIL / GECIKMELI): ASELS.IS',candles:[{close:100}]};
+assert.equal(context.offlineMergeForImport(legacy,incoming),incoming);
+const csv={source:'KULLANICI DOSYASI: saved.csv',candles:[{close:100}]};
+assert.throws(()=>context.offlineMergeForImport(csv,incoming),/remain protected/);
+assert.equal(csv.candles[0].close,100);
+assert.throws(()=>context.offlineMergeForImport(incoming,{...incoming,candles:[{close:300}]}),/remain protected/);
+const synthetic={source:'SENTETİK TEST',candles:[{close:1}]};
+assert.equal(context.offlineMergeForImport(synthetic,incoming),incoming);
+assert.equal(context.offlineMergeForImport(incoming,synthetic),incoming);
+assert.equal(context.offlineComparableSeries(incoming,synthetic),false);
+assert.equal(context.offlineComparableSeries(incoming,legacy),true);
+console.log(JSON.stringify({checks:8,status:'passed',scope:'Legacy Yahoo normalization migration; CSV/closed candle and synthetic separation protections'}));
