@@ -1,0 +1,7 @@
+.git
+.cache
+android-core/build
+runtime-data
+test-results
+__pycache__
+*.pyc
