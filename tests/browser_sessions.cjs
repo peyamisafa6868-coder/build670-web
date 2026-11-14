@@ -30,14 +30,19 @@ let env;const report={scope:'Isolated browser-session identities; no real provid
  await page.getByRole('button',{name:'Oturumu kapat',exact:true}).click();await page.locator('#access-token').waitFor();
  await login(bob);assert.equal(await page.evaluate(()=>localStorage.getItem('session_test_record')),null);assert.equal(await page.evaluate(()=>sessionStorage.getItem('session_test_record')),null);
  await page.evaluate(()=>localStorage.setItem('session_test_record','bob-only'));
- const stale=await context.request.get(env.base+'/api/core/metadata',{headers:{'X-Build670-Session':aBinding}});assert.equal(stale.status(),409);
+ // APIRequestContext omits Secure cookies over HTTP even though Chromium accepts
+ // them on loopback. Replay this test-only cookie explicitly to test the binding.
+ const bobCookie=(await context.cookies()).find(c=>c.name==='__Host-build670_session');
+ const replayCookie=bobCookie.name+'='+bobCookie.value;
+ const stale=await context.request.get(env.base+'/api/core/metadata',{headers:{Cookie:replayCookie,'X-Build670-Session':aBinding}});assert.equal(stale.status(),409);
  const bBinding=await page.locator('meta[name="build670-session-binding"]').getAttribute('content');
  await page.reload();await page.locator('#build670-session').waitFor();assert.match(await page.locator('#build670-session').innerText(),/bob/);assert.equal(await page.evaluate(()=>localStorage.getItem('session_test_record')),'bob-only');
  await page.getByRole('button',{name:'Oturumu kapat',exact:true}).click();await page.locator('#access-token').waitFor();
- const loggedOut=await context.request.get(env.base+'/api/core/metadata',{headers:{'X-Build670-Session':bBinding}});assert.equal(loggedOut.status(),401);
+ const loggedOut=await context.request.get(env.base+'/api/core/metadata',{headers:{Cookie:replayCookie,'X-Build670-Session':bBinding}});assert.equal(loggedOut.status(),401);
  await login(alice);assert.equal(await page.evaluate(()=>localStorage.getItem('session_test_record')),'alice-only');assert.equal(await page.evaluate(()=>sessionStorage.getItem('session_test_record')),'alice-tab');
  assert.equal(await page.evaluate(()=>__nativeLocal.getItem('bist_build670_settings')),'{"favorites":["LEGACY"]}');
  const stored=await page.evaluate(()=>JSON.stringify({...__nativeLocal,...__nativeSession}));assert.ok(!stored.includes(alice)&&!stored.includes(bob));
+ for(const width of [320,390,844]){await page.setViewportSize({width,height:844});const rects=await page.evaluate(()=>({bar:document.querySelector('#build670-session').getBoundingClientRect().bottom,app:document.querySelector('#androidApp').getBoundingClientRect().top,width:document.documentElement.scrollWidth}));assert.ok(rects.app>=rects.bar);assert.ok(rects.width<=width);}
  report.checks.push('Account switch isolates local and session records, preserves legacy bytes, rejects stale tab, survives reload and revokes logout');
  assert.deepEqual(report.errors,[]);report.status='passed';await context.close();
 })().catch(e=>{report.status='failed';report.failure=e.stack;process.exitCode=1;}).finally(async()=>{fs.mkdirSync('test-results/sessions',{recursive:true});fs.writeFileSync('test-results/sessions/results.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));if(env)await env.close();});
