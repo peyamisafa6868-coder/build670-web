@@ -207,7 +207,7 @@
       const pixels=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?h:1);zoomAt(Math.exp(clamp(pixels,-120,120)*.0015),e);};
     canvas.ondblclick=e=>{if(point(e).x>right){s.autoScale=true;s.verticalScale=1;s.verticalOffset=0;schedule();}else if(e.button===0)zoomAt(1/1.2,e);};
     canvas.style.touchAction='none';canvas.style.cursor=s.pointer?'grabbing':(s.mouse?.x>right?'ns-resize':s.mouse&&(Math.abs(s.mouse.y-pb)<7||Math.abs(s.mouse.y-vb)<7)?'row-resize':'crosshair');
-    s.redraw=schedule;s.fit=()=>{s.autoScale=true;s.verticalScale=1;s.verticalOffset=0;schedule();};s.last=()=>{s.pan=0;s.followLast=true;schedule();};
+    s.redraw=schedule;s.fit=()=>{s.visible=Math.min(96,s.bars.length);s.pan=0;s.followLast=true;s.autoScale=true;s.verticalScale=1;s.verticalOffset=0;s.mouse=null;schedule();};s.last=()=>{s.pan=0;s.followLast=true;schedule();};
     s.bounds={left,right,top,bottom,start,count,min,max};s.canvas=canvas;
   }
   function zoom(container,factor){const s=states.get(container);if(s){s.visible=clamp(Math.round(s.visible/factor),Math.min(12,s.bars.length),s.bars.length);s.redraw?.();}}
