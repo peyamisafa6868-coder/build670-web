@@ -44,6 +44,9 @@ jobs:
         run: node tests/chart_mouse_unit.cjs
       - name: JavaScript syntax
         run: |
+          node --check browser-session.js
+          node --check browser-login.js
+          node --check tests/browser_sessions.cjs
           node --check stock-analysis.js
           node --check yahoo-auto.js
           node --check viop-ledger.js
@@ -84,6 +87,7 @@ jobs:
               failed=$((failed+1))
             fi
           }
+          run_case tests/browser_sessions.cjs
           run_case tests/browser_company_actions.cjs
           run_case tests/browser_financial.cjs
           run_case tests/browser_market_failures.cjs

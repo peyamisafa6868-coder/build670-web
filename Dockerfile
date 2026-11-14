@@ -12,7 +12,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY --from=core-build /app/android-core/build/android-core.jar android-core/build/android-core.jar
 COPY *.py *.js *.css index.html ./
-COPY android-resources.json build-version.json scan-console.html viop-ledger.html ./
+COPY android-resources.json build-version.json scan-console.html viop-ledger.html browser-login.html ./
 COPY assets assets
 COPY data data
 ENV PYTHONUNBUFFERED=1 PORT=8000
