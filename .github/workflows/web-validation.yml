@@ -74,27 +74,39 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Browser regressions and responsive reference states
         run: |
-          node tests/browser_company_actions.cjs
-          node tests/browser_financial.cjs
-          node tests/browser_market_failures.cjs
-          node tests/browser_offline_empty.cjs
-          node tests/browser_repairs.cjs
-          node tests/browser_preferences.cjs
-          node tests/browser_fullscreen.cjs
-          node tests/browser_stocks.cjs
-          node tests/browser_news.cjs
-          node tests/browser_simulation.cjs
-          node tests/browser_history.cjs
-          node tests/browser_technical.cjs
-          node tests/browser_results.cjs
-          node tests/browser_scan_completion_trends.cjs
-          node tests/browser_scan_quota_recovery.cjs
-          node tests/browser_chart_state.cjs
-          node tests/browser_chart_support_levels.cjs
-          node tests/chart_mouse.cjs
-          node tests/browser_production_routes.cjs
-          node tests/browser_mobile_readability.cjs
-          node tests/browser_system_report.cjs
+          # Run each isolated fixture; report every regression in a single CI job.
+          failed=0
+          run_case() {
+            if node "$1"; then
+              echo "PASS $1"
+            else
+              echo "::error file=$1::Browser regression failed"
+              failed=$((failed+1))
+            fi
+          }
+          run_case tests/browser_company_actions.cjs
+          run_case tests/browser_financial.cjs
+          run_case tests/browser_market_failures.cjs
+          run_case tests/browser_offline_empty.cjs
+          run_case tests/browser_repairs.cjs
+          run_case tests/browser_preferences.cjs
+          run_case tests/browser_fullscreen.cjs
+          run_case tests/browser_stocks.cjs
+          run_case tests/browser_news.cjs
+          run_case tests/browser_simulation.cjs
+          run_case tests/browser_history.cjs
+          run_case tests/browser_technical.cjs
+          run_case tests/browser_results.cjs
+          run_case tests/browser_scan_completion_trends.cjs
+          run_case tests/browser_scan_quota_recovery.cjs
+          run_case tests/browser_chart_state.cjs
+          run_case tests/browser_chart_support_levels.cjs
+          run_case tests/chart_mouse.cjs
+          run_case tests/browser_production_routes.cjs
+          run_case tests/browser_mobile_readability.cjs
+          run_case tests/browser_system_report.cjs
+          echo "Browser regression failures: $failed"
+          test "$failed" -eq 0
       - name: Save raw browser results and screenshots
         if: always()
         uses: actions/upload-artifact@v4
