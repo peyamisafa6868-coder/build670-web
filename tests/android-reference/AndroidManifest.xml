@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="parity.build670.reference">
+  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="30" />
+  <application android:label="BUILD670 Reference Tests" android:debuggable="true" android:testOnly="true" />
+  <instrumentation android:name="parity.ReferenceRunner" android:targetPackage="tr.borsatakip.v5.diagnostic.v668.delayed" />
+</manifest>

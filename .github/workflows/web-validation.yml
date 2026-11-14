@@ -1,0 +1,105 @@
+name: Web calculation and data integrity
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Build unchanged Android core and run original JUnit tests
+        run: python scripts/build_core.py --test
+      - name: Server, failure branches and strict CSP
+        run: python -m unittest discover -s tests -v
+      - name: Android Kotlin golden comparisons
+        run: |
+          node tests/test_android_parity.cjs
+          node tests/test_signal_parity.cjs
+          node tests/test_provenance.cjs
+          node tests/test_ledger.cjs
+          node tests/test_viop_catalog.cjs
+          node tests/test_viop_ledger.cjs
+          node tests/test_preferences.cjs
+          node tests/test_market_presentation.cjs
+          node tests/test_trend_glow.cjs
+          node tests/test_chart_support_levels.cjs
+          node tests/test_chart_integrity.cjs
+          node tests/test_chart_canvas_upgrade.cjs
+          python tests/verify_chart_math.py
+      - name: Mouse interaction unit regressions
+        run: node tests/chart_mouse_unit.cjs
+      - name: JavaScript syntax
+        run: |
+          node --check stock-analysis.js
+          node --check yahoo-auto.js
+          node --check viop-ledger.js
+          node --check terminal.js
+          node --check android-layout.js
+          node --check chart-support-levels.js
+          node --check chart-integrity.js
+          node --check android-chart.js
+          node --check tests/browser_chart_support_levels.cjs
+          node --check android-programmatic.js
+          node --check android-preferences.js
+          node --check android-fullscreen.js
+          node --check android-market.js
+          node --check android-stocks.js
+          node --check android-history.js
+          node --check android-technical.js
+          node --check android-results.js
+          node --check android-app.js
+          node --check tests/system_report_counts.cjs
+          node tests/system_report_counts.cjs
+          node --check tests/browser_mobile_readability.cjs
+          node --check tests/browser_system_report.cjs
+          node --check tests/browser_scan_completion_trends.cjs
+          node --check tests/browser_scan_quota_recovery.cjs
+      - name: Install pinned browser test runtime
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx playwright install --with-deps chromium
+      - name: Browser regressions and responsive reference states
+        run: |
+          node tests/browser_company_actions.cjs
+          node tests/browser_financial.cjs
+          node tests/browser_market_failures.cjs
+          node tests/browser_offline_empty.cjs
+          node tests/browser_repairs.cjs
+          node tests/browser_preferences.cjs
+          node tests/browser_fullscreen.cjs
+          node tests/browser_stocks.cjs
+          node tests/browser_news.cjs
+          node tests/browser_simulation.cjs
+          node tests/browser_history.cjs
+          node tests/browser_technical.cjs
+          node tests/browser_results.cjs
+          node tests/browser_scan_completion_trends.cjs
+          node tests/browser_scan_quota_recovery.cjs
+          node tests/browser_chart_state.cjs
+          node tests/browser_chart_support_levels.cjs
+          node tests/chart_mouse.cjs
+          node tests/browser_production_routes.cjs
+          node tests/browser_mobile_readability.cjs
+          node tests/browser_system_report.cjs
+      - name: Save raw browser results and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build670-browser-${{ github.sha }}
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 90
