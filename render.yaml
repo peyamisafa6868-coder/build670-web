@@ -1,4 +1,4 @@
-# BUILD670 V3 — Render Blueprint (staging-ready, no automatic production deploy)
+# BUILD670 staging-ready Render Blueprint. Manual deploy is intentional.
 services:
   - type: web
     name: build670-web
@@ -13,5 +13,4 @@ services:
         value: "1"
       - key: BUILD670_USER_TOKEN_HASHES
         sync: false
-# Set BUILD670_USER_TOKEN_HASHES in Render before deploying.
-# Do not store API keys, user tokens, or token hashes in this repository.
+# Keep user token hashes in Render's secret environment, never in the repository.
