@@ -30,4 +30,6 @@ for key in keys:
  result['maxError']=max([result['maxError']]+errors)
  result['series'][key]={'maxError':max(errors) if errors else None,'nonNull':len(errors)}
 print(json.dumps(result,ensure_ascii=False,indent=2))
-( ROOT/'test-results'/'selected-chart-upgrade'/'math-parity.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+output_path = ROOT / 'test-results' / 'selected-chart-upgrade' / 'math-parity.json'
+output_path.parent.mkdir(parents=True, exist_ok=True)
+output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
