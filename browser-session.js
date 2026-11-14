@@ -42,6 +42,7 @@
   const button=document.createElement('button');button.type='button';button.textContent='Oturumu kapat';button.style.cssText='min-height:44px;padding:8px 14px;background:#143d4d;border:1px solid #71c7bd;border-radius:8px;color:white';
   button.style.flexShrink='0';button.onclick=async()=>{button.disabled=true;try{const r=await fetch('/auth/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(r.ok)end();else button.disabled=false;}catch{button.disabled=false;label.textContent='Çıkış tamamlanamadı. Yeniden deneyin.';}};
   bar.append(label,button);document.body.prepend(bar);
+  if(!document.querySelector('#androidApp'))bar.style.position='relative';
   const style=document.createElement('style');style.textContent='#androidApp{top:var(--build670-session-height,60px)}';document.head.append(style);
   new ResizeObserver(()=>document.documentElement.style.setProperty('--build670-session-height',bar.offsetHeight+'px')).observe(bar);
  });

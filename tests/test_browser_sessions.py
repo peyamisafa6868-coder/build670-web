@@ -1,5 +1,5 @@
 """Browser auth HTTP regressions, isolated credentials and mocked market data."""
-import hashlib,json,re,threading,unittest,urllib.request,urllib.error
+import hashlib,json,re,threading,time,unittest,urllib.request,urllib.error
 from http.server import ThreadingHTTPServer
 from unittest.mock import patch
 import browser_sessions as sessions
@@ -47,6 +47,9 @@ class BrowserSessions(unittest.TestCase):
         self.assertEqual(self.request('/auth/login',{'token':A},headers={'Origin':'https://other.example'})[0],403)
         self.assertEqual(self.request('/auth/login',{'token':A,'extra':1})[0],400)
         self.assertEqual(self.request('/auth/login',{'token':42})[0],401)
+    def test_public_login_rejects_plain_http_origin(self):
+        with patch.dict('os.environ',{'BUILD670_PUBLIC_SERVER':'1'}):
+            self.assertEqual(self.request('/auth/login',{'token':A})[0],403)
     def test_rotation_logout_and_replay(self):
         old,binding,_=self.login()
         code,headers,_=self.request('/auth/login',{'token':A},cookie=old)
@@ -81,7 +84,7 @@ class BrowserSessions(unittest.TestCase):
     def test_rate_limit_is_bounded_and_retryable(self):
         for _ in range(5):self.assertEqual(self.request('/auth/login',{'token':'wrong'})[0],401)
         code,headers,_=self.request('/auth/login',{'token':A});self.assertEqual(code,429);self.assertEqual(headers['Retry-After'],'60')
-        sessions._failures['127.0.0.1']=(0,5)
+        sessions._failures['127.0.0.1']=(time.monotonic()-61,5)
         self.assertEqual(self.request('/auth/login',{'token':A})[0],200)
     def test_cookie_owners_cannot_read_or_cancel_each_others_scan(self):
         alice,a,_=self.login();bob,b,_=self.login(B)

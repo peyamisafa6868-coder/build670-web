@@ -252,6 +252,7 @@ class Handler(BaseHTTPRequestHandler):
         parsed=urlsplit(self.path)
         if parsed.path in ('/auth/login','/auth/logout'):
             if not self.headers.get('Origin') or not self._same_origin():return self.send_json(403,{'error':'Aynı kaynaktan oturum isteği gerekli.'})
+            if (os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('BUILD670_PUBLIC_SERVER')=='1') and urlsplit(self.headers['Origin']).scheme!='https':return self.send_json(403,{'error':'Uzak oturum için HTTPS gerekli.'})
             if self.headers.get('Content-Type','').split(';')[0]!='application/json':return self.send_json(415,{'error':'JSON içerik gerekli.'})
             if parsed.path=='/auth/logout':
                 session=browser_sessions.lookup(self.headers)
