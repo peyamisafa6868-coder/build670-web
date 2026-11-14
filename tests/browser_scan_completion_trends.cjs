@@ -44,8 +44,14 @@ function snapshot(){
   if(holdPost)await new Promise(resolve=>{releasePost=resolve;});
   return route.fulfill({json:snapshot()});
  });
- await page.route('**/api/scans/**',route=>route.fulfill({json:
-  route.request().url().includes('/results?')?{total:rawRows.length,results:rawRows}:snapshot()}));
+ await page.route('**/api/scans/**',route=>{
+  const url=route.request().url();
+  if(url.includes('/failures?'))return route.fulfill({json:{total:2,failures:[
+    {symbol:'ALVES',code:'INSUFFICIENT_HISTORY',closedBarCount:88,requiredClosedBars:220,error:'INSUFFICIENT_HISTORY: 88/220 kapanmış mum; teknik hesap yapılmadı.'},
+    {symbol:'ALTINS1',code:'PROVIDER_OR_CORE_ERROR',classification:'PROVIDER',error:'Yahoo HTTP 404; veri alınamadı.'}
+  ]}});
+  return route.fulfill({json:url.includes('/results?')?{total:rawRows.length,results:rawRows}:snapshot()});
+ });
  await page.goto(env.base+'/?reference',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__BIST_ANDROID_UI_READY,null,{timeout:30000});
  await page.evaluate(()=>{
@@ -81,6 +87,14 @@ function snapshot(){
  assert.ok(bySymbol.TUPRS.box.includes('25px')&&bySymbol.EREGL.box.includes('12px'));
  assert.equal(bySymbol.SISE.state,null);
  assert.equal(bySymbol.BIMAS.state,null);
+ await page.getByRole('button',{name:'YETERSİZ VERİ / HATA NEDENLERİNİ GÖSTER'}).click();
+ await page.waitForFunction(()=>document.querySelector('[data-scan-failure-details]')?.textContent.includes('ALTINS1'));
+ const diagnostic=await page.locator('[data-scan-failure-details]').innerText();
+ assert.match(diagnostic,/1 yetersiz geçmiş • 1 sağlayıcı\/hesap hatası/);
+ assert.match(diagnostic,/ALVES.*YETERSİZ GEÇMİŞ.*88\/220 kapanmış mum/);
+ assert.doesNotMatch(diagnostic,/INSUFFICIENT_HISTORY: INSUFFICIENT_HISTORY/);
+ assert.match(diagnostic,/ALTINS1.*SAĞLAYICI HATASI.*Yahoo HTTP 404/);
+ report.checks.push('Failed symbol diagnostics distinguish missing 220 bars and provider 404 without duplicate error codes');
  report.checks.push('Strong upward trends phosphor green and weak upward trends softer green');
  report.checks.push('Strong downward trends brighter red; neutral/insufficient remain uncolored');
  await page.screenshot({path:path.join(output,'completed-neon-trends.png')});
