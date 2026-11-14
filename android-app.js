@@ -243,13 +243,22 @@
             if(version!==route)return;records.push(...next.failures);
           }
           if(version!==route)return;
-          failuresBox.replaceChildren(el('strong','',records.length+' / '+first.total+' kayıt • her sembolün nedeni'));
+          const insufficient=records.filter(issue=>issue.code==='INSUFFICIENT_HISTORY');
+          const providerErrors=records.filter(issue=>issue.code!=='INSUFFICIENT_HISTORY');
+          const heading=el('strong','',records.length+' / '+first.total+' kayıt • '+insufficient.length+' yetersiz geçmiş • '+providerErrors.length+' sağlayıcı/hesap hatası');
+          const explanation=el('p','terminal-note','Yetersiz geçmiş bir fiyat hatası değildir: gerekli kapanmış mum sayısına ulaşılamadı, teknik hesap üretilmedi. 404 sembol/kaynak eşleşmesi; 502 ise veri sağlayıcısı/yanıt sorunu olabilir. Bunlar doğrulanmış AL/SAT sinyali değildir.');
+          failuresBox.replaceChildren(heading,explanation);
           for(const issue of records){
+            const code=String(issue.code||'HATA');
+            const reason=String(issue.error||'Neden belirtilmedi').replace(new RegExp('^'+code+':\\s*'),'').slice(0,240);
             const have=Number.isInteger(issue.closedBarCount)?issue.closedBarCount+' / '+(issue.requiredClosedBars||220)+' kapanmış mum • ':'';
-            failuresBox.append(el('div','',String(issue.symbol||'—')+' • '+have+String(issue.code||'HATA')+' • '+String(issue.error||'Neden belirtilmedi').slice(0,240)));
+            const label=code==='INSUFFICIENT_HISTORY'?'YETERSİZ GEÇMİŞ':(issue.classification==='PROVIDER'?'SAĞLAYICI HATASI':code);
+            const line=el('div','',String(issue.symbol||'—')+' • '+have+label+' • '+reason);
+            line.dataset.failureCategory=code==='INSUFFICIENT_HISTORY'?'insufficient':'provider';
+            failuresBox.append(line);
           }
           if(!records.length)failuresBox.append(el('div','','Kaydedilmiş ayrıntılı hata yok.'));
-          failuresBox.append(action('SADECE BAŞARISIZLARI YENİDEN TARA',()=>startScan(undefined,jobId,true)));
+          failuresBox.append(action('SADECE EKSİK / HATALI KAYITLARI YENİDEN KONTROL ET',()=>startScan(undefined,jobId,true)));
         }catch(error){if(version===route)failuresBox.replaceChildren(el('div','','Hata kayıtları alınamadı: '+error.message),action('YENİDEN DENE',()=>open.click()));}
       });
       // Render outside the virtualized result list so repaint does not remove this action.
