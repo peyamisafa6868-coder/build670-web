@@ -1,0 +1,18 @@
+[
+  {
+    "path": "src/main/java/tr/borsatakip/v5/ui/PriceChartView.kt",
+    "sha256": "7ee7c74e7b59f943975a0d13555ba5658081f9a30075750e973ceaf97e6cd081"
+  },
+  {
+    "path": "src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt",
+    "sha256": "e77904a4fe1799d93329d424e986546f7b21fdf5da860ab1aedda69b59e1c7a5"
+  },
+  {
+    "path": "src/main/java/tr/borsatakip/v5/ui/FullscreenChartActivity.kt",
+    "sha256": "4460acbd4dded8a8188202c2066e7ddf35c3829c408386c8aa48ae9fe0ec1b25"
+  },
+  {
+    "path": "src/main/java/tr/borsatakip/v5/ui/SettingsDetailActivity.kt",
+    "sha256": "14d5edb1b4c7132c40f1b63275d36235d682a4f5713c03ddd21881641b546ad1"
+  }
+]
