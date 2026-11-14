@@ -56,6 +56,11 @@ let env,page;const report={scope:'Explicit closed OHLCV fixtures; no real exchan
  await page.evaluate(()=>BistAndroid.navigate('fullscreen',{symbol:'ASELS',data:window.__chartFixture}));
  await page.waitForFunction(()=>!!AndroidPriceChart.getState(document.querySelector('#apk-fullChart'))?.model,null,{timeout:25000});
  const full=page.locator('[data-chart-toggle=toggleSupport]'),res=page.locator('[data-chart-toggle=toggleResistance]');
+ assert.equal(await full.isVisible(),false,'indicator controls start collapsed');
+ assert.equal(await res.isVisible(),false,'indicator controls start collapsed');
+ await page.getByRole('button',{name:'Göstergeler ▾',exact:true}).click();
+ await full.waitFor({state:'visible'});
+ await res.waitFor({state:'visible'});
  assert.ok(await full.isVisible()&&await res.isVisible());
  await full.click();
  const toggled=await page.evaluate(()=>AndroidPriceChart.getState(document.querySelector('#apk-fullChart')).drawnLevels);
@@ -64,6 +69,15 @@ let env,page;const report={scope:'Explicit closed OHLCV fixtures; no real exchan
  await full.click();
  const refreshed=await page.evaluate(()=>AndroidPriceChart.getState(document.querySelector('#apk-fullChart')).drawnLevels);
  assert.ok(refreshed.support.length>0);
+ await res.click();
+ const withoutResistance=await page.evaluate(()=>AndroidPriceChart.getState(document.querySelector('#apk-fullChart')).drawnLevels);
+ assert.equal(withoutResistance.resistance.length,0);
+ assert.ok(withoutResistance.support.length>0);
+ await res.click();
+ const restored=await page.evaluate(()=>AndroidPriceChart.getState(document.querySelector('#apk-fullChart')).drawnLevels);
+ assert.ok(restored.support.length>0&&restored.resistance.length>0);
+ await page.getByRole('button',{name:'Göstergeler ▾',exact:true}).click();
+ assert.equal(await full.isVisible(),false,'indicator panel closes again');
  report.checks.push('Fullscreen separate S/R toggles work with same chart renderer');
  assert.deepEqual(report.errors,[]);report.status='passed';
 })().catch(async e=>{report.status='failed';report.failure=e.stack;process.exitCode=1;if(page)await page.screenshot({path:path.join(folder,'failure.png')}).catch(()=>{});}).finally(async()=>{
