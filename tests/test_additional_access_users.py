@@ -55,6 +55,60 @@ class AdditiveIdentityTests(unittest.TestCase):
             with self.assertRaises(AccessConfigurationError):
                 identities()
 
+    def test_corrupt_legacy_map_remains_fatal_without_explicit_recovery(self):
+        with patch.dict('os.environ', {
+            'BUILD670_USER_TOKEN_HASHES': '{broken',
+            'RAILWAY_ENVIRONMENT_NAME': 'staging',
+            'BUILD670_STAGING_AUTH_RECOVERY': '0',
+        }):
+            with self.assertRaises(AccessConfigurationError):
+                identities()
+
+    def test_staging_recovery_allows_valid_supplemental_only(self):
+        with patch.dict('os.environ', {
+            'BUILD670_USER_TOKEN_HASHES': '{broken',
+            'RAILWAY_ENVIRONMENT_NAME': 'staging',
+            'BUILD670_STAGING_AUTH_RECOVERY': '1',
+        }):
+            self.assertEqual(identities(), {'staging_user': digest(self.second)})
+            self.assertEqual(authenticate({'Authorization': 'Bearer ' + self.second}, '198.51.100.10'), 'staging_user')
+            self.assertIsNone(authenticate({'Authorization': 'Bearer ' + self.first}, '198.51.100.10'))
+            self.assertIsNone(authenticate({'Authorization': 'Bearer ' + 'invalid'*6}, '198.51.100.10'))
+
+    def test_recovery_never_activates_in_production(self):
+        with patch.dict('os.environ', {
+            'BUILD670_USER_TOKEN_HASHES': '{broken',
+            'RAILWAY_ENVIRONMENT_NAME': 'production',
+            'BUILD670_STAGING_AUTH_RECOVERY': '1',
+        }):
+            with self.assertRaises(AccessConfigurationError):
+                identities()
+
+    def test_recovery_requires_valid_supplemental_identities(self):
+        with patch.dict('os.environ', {
+            'BUILD670_USER_TOKEN_HASHES': '{broken',
+            'RAILWAY_ENVIRONMENT_NAME': 'staging',
+            'BUILD670_STAGING_AUTH_RECOVERY': '1',
+            'BUILD670_ADDITIONAL_USER_TOKEN_HASHES': '{}',
+        }):
+            with self.assertRaises(AccessConfigurationError):
+                identities()
+        with patch.dict('os.environ', {
+            'BUILD670_USER_TOKEN_HASHES': '{broken',
+            'RAILWAY_ENVIRONMENT_NAME': 'staging',
+            'BUILD670_STAGING_AUTH_RECOVERY': '1',
+            'BUILD670_ADDITIONAL_USER_TOKEN_HASHES': '{broken',
+        }):
+            with self.assertRaises(AccessConfigurationError):
+                identities()
+
+    def test_valid_legacy_map_preserved_even_with_recovery_flag(self):
+        with patch.dict('os.environ', {
+            'RAILWAY_ENVIRONMENT_NAME': 'staging',
+            'BUILD670_STAGING_AUTH_RECOVERY': '1',
+        }):
+            self.assertEqual(identities(), {'original': digest(self.first), 'staging_user': digest(self.second)})
+
 
 if __name__ == '__main__':
     unittest.main()
