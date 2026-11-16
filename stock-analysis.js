@@ -151,7 +151,9 @@
     const analysis=readable(payload.candles,payload.interval||state.interval);
     put('easyDataSource',`${payload.symbol||state.symbol} · ${labels[payload.interval||state.interval]} · Kaynak: ${payload.source||'KULLANICI DOSYASI'}. En yeni sağlayıcı mumu açıklamaya alınmaz; yatırım tavsiyesi değildir.`);
     if(!analysis){put('easyPriceMovement','En az 31 geçerli sağlayıcı mumu ve seçilen döneme uygun süreklilik gerekir. Eksik veriden yön üretilmez.');return;}
-    const verified=closed.filter(b=>b.closed===true);
+    // closedCandles() already excludes forming observations; preserve its result
+    // even when the transport omits an explicit closed=true property.
+    const verified=closed;
     const last20=verified.slice(-20),last36=verified.slice(-36);
     evidenceGraphic('easyPriceMovement',last36.map(b=>b.close));
     evidenceGraphic('easyImportantLevels',last20.map(b=>b.close));
