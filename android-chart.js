@@ -227,6 +227,6 @@
   }
   function zoom(container,factor){const s=states.get(container);if(s){s.visible=clamp(Math.round(s.visible/factor),Math.min(12,s.bars.length),s.bars.length);s.redraw?.();}}
   function clear(container){if(container){const s=states.get(container);if(s){clearTimeout(s.longTimer);s.resizeObserver?.disconnect();if(s.frame!=null)cancelAnimationFrame(s.frame);s.pointers?.clear();}states.delete(container);container.replaceChildren();}}
-  window.AndroidPriceChart={mount,zoom,clear,getState:container=>states.get(container),colors};
+  if(typeof window!=='undefined')window.AndroidPriceChart={mount,zoom,clear,getState:container=>states.get(container),colors};
   if(typeof module!=='undefined')module.exports={relativeVolumeFill};
 })();
