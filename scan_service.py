@@ -83,7 +83,9 @@ class ScanService:
     def __init__(self,core=CORE,fetcher=yahoo_scan_history,universe=UNIVERSE,persist=True,directory=None):
         self.core,self.fetcher,self.universe,self.persist=core,fetcher,universe,persist
         self.lock=threading.RLock();self.jobs={};self.last_start=0
-        self.directory=Path(directory) if directory is not None else ROOT/'runtime-data'
+        self.directory=Path(directory) if directory is not None else Path(os.environ.get('BUILD670_SCAN_DATA_DIR', str(ROOT/'runtime-data')))
+        if not self.directory.is_absolute():
+            raise ValueError('Tarama veri dizini mutlak yol olmalı.')
         if persist:
             for path in sorted(self.directory.glob('scan-*.json'),key=lambda p:p.stat().st_mtime)[-4:]:
                 try:
