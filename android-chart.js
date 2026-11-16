@@ -108,7 +108,14 @@
     s.drawnLevels=drawnLevels;
     function aligned(a,yy,color,width=2){c.beginPath();let started=false;for(let i=0;i<count;i++){const v=a[start+i];if(!finite(v))continue;const xx=x(i);if(started)c.lineTo(xx,yy(v));else{c.moveTo(xx,yy(v));started=true;}}if(started){c.strokeStyle=color;c.lineWidth=width;c.stroke();}}
     const body=Math.max(2,Math.min(12,step*.55));const spikeIdx=new Set((s.quality?.spikes||[]).map(v=>v.index));
-    visible.forEach((b,i)=>{const xx=x(i),color=b.close>=b.open?colors.up:colors.down;line(xx,y(b.low),xx,y(b.high),color,2);const y1=y(b.open),y2=y(b.close);rect(xx-body/2,Math.min(y1,y2),xx+body/2,Math.max(Math.max(y1,y2),Math.min(y1,y2)+2),color);
+    visible.forEach((b,i)=>{const xx=x(i),color=b.close>=b.open?colors.up:colors.down;line(xx,y(b.low),xx,y(b.high),color,2);const y1=y(b.open),y2=y(b.close),upper=Math.min(y1,y2),lower=Math.max(y1,y2),height=lower-upper;
+      const index=start+i,history=all.slice(Math.max(0,index-50),index),closed=b.closed===true||(b.closed==null&&(index<all.length-1||s.data.lastBarClosed));
+      const eligible=closed&&Number.isFinite(b.volume)&&history.length===50&&history.every((v,j)=>Number.isFinite(v.volume)&&v.volume>=0&&(v.closed===true||(v.closed==null&&(index-50+j<all.length-1||s.data.lastBarClosed))));
+      const percentile=eligible?history.filter(v=>v.volume<b.volume).length/50:null;
+      if(enabled('toggleRelativeVolumeFill',false)&&height>1){
+        c.strokeStyle=color;c.lineWidth=1.5;c.strokeRect(xx-body/2,upper,body,height);
+        if(percentile!==null&&percentile>0){c.fillStyle=color;const fill=height*percentile;c.fillRect(xx-body/2,b.close>=b.open?lower-fill:upper,body,fill);}
+      }else rect(xx-body/2,upper,xx+body/2,Math.max(lower,upper+2),color);
       if(spikeIdx.has(start+i)){c.fillStyle='#ffcf78';c.beginPath();c.arc(xx,Math.max(pt+8,y(b.high)-5),3,0,Math.PI*2);c.fill();}
     });
     for(const [a,color,width] of overlays)aligned(a,y,color,width);
