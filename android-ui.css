@@ -376,3 +376,21 @@ body.apk-mode>.mobile-bottom-nav{display:none!important}
  #androidApp .apk-today-counters{grid-template-columns:repeat(2,minmax(0,1fr))}
  #androidApp .apk-today-meta{flex-direction:column;align-items:flex-start}
 }
+
+
+/* Akıllı Değer: same dark visual system and accessible source gate. */
+#androidApp .apk-value-screen{background:#031c2c!important;color:#e3f3fc!important}
+#androidApp .apk-value-root{max-width:1180px;margin:auto;padding:16px clamp(12px,2.5vw,28px) 36px}
+#androidApp .apk-value-block{background:#0b2a40;color:#e4f5fd;border:1px solid #27506a;line-height:1.5}
+#androidApp .apk-value-tabs{gap:8px;height:auto}
+#androidApp .apk-value-tabs button{min-height:48px;border-radius:9px}
+#androidApp .apk-value-tabs [aria-selected="true"]{outline:2px solid #67dce5;outline-offset:-2px;font-weight:700;color:#f4feff}
+#androidApp .apk-value-strategies{gap:9px;margin:10px 0;flex-wrap:wrap}
+#androidApp .apk-value-strategy{height:auto;min-height:136px;margin:0;padding:12px 9px;border-radius:11px;min-width:150px;flex:1 1 0;color:#effaff}
+#androidApp .apk-strategy-description{display:block!important;color:#b9dbe7;font-size:11px;line-height:1.4}
+#androidApp .apk-value-text{line-height:1.5}
+#androidApp .apk-value-button:disabled{opacity:.65;cursor:not-allowed;filter:saturate(.6)}
+#androidApp .apk-value-input{background:#0b2a40;color:#f2faff;border:1px solid #2b5a72;border-radius:6px;padding:12px;margin:4px 0}
+#androidApp .apk-value-input::placeholder{color:#b9d3e1}
+#androidApp :is(.apk-value-button,.apk-value-strategy,.apk-universe-button):focus-visible{outline:3px solid #a6fbff!important;outline-offset:2px}
+@media(max-width:620px){#androidApp .apk-value-strategies{flex-direction:column}#androidApp .apk-value-strategy{width:100%;min-height:94px}}
