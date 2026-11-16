@@ -146,8 +146,22 @@ class ScanService:
                 if old['interval']!=interval:raise ValueError('Kayıtlı periyot değiştirilerek devam edilemez.')
                 if not old.get('universeSymbols'):raise ValueError('Eski kaydın tam sembol listesi bulunamadı.')
                 if request.get('retryFailuresOnly',False):
-                    symbols=list(dict.fromkeys(x['symbol'] for x in old['failures']));universe_symbols=list(symbols)
+                    # Re-run ONLY failed / insufficient symbols, while retaining
+                    # the original universe and all previously successful rows.
+                    symbols=list(dict.fromkeys(
+                        [x['symbol'] for x in old['failures']]+
+                        [x['symbol'] for x in old['results'] if x.get('signalValidity')=='INSUFFICIENT']))
                     if not symbols:raise ValueError('Yeniden denenecek eksik veya hatalı kayıt yok.')
+                    universe_symbols=list(old['universeSymbols'])
+                    retry_set=set(symbols)
+                    retained_results=[x for x in old['results'] if x['symbol'] not in retry_set]
+                    retained_failures=[x for x in old['failures'] if x['symbol'] not in retry_set]
+                    resume={**old,'results':retained_results,'failures':retained_failures,
+                        'processed':len(retained_results)+len(retained_failures),
+                        'successful':sum(x.get('signalValidity')!='INSUFFICIENT' for x in retained_results),
+                        'insufficient':sum(x.get('signalValidity')=='INSUFFICIENT' for x in retained_results)+
+                            sum(x.get('classification')=='INSUFFICIENT_DATA' or x.get('code')=='INSUFFICIENT_HISTORY' for x in retained_failures),
+                        'errors':sum(x.get('classification')!='INSUFFICIENT_DATA' and x.get('code')!='INSUFFICIENT_HISTORY' for x in retained_failures)}
                 else:
                     resume=old;universe_symbols=list(old['universeSymbols'])
                     done={x['symbol'] for x in old['results']}|{x['symbol'] for x in old['failures']}
@@ -169,7 +183,7 @@ class ScanService:
                 'universeSha256':hashlib.sha256(json.dumps(sorted(universe_symbols),separators=(',',':')).encode()).hexdigest(),
                 'canClaimExchangeComplete':False,'universeFetchedAt':universe['fetchedAt'],
                 'signalAttestationVerified':False,'provider':'Yahoo Finance (unofficial, delayed)',
-                'engineVersion':'V5.4.1','benchmarkError':None}
+                'engineVersion':'V5.4.1','benchmarkError':None,'lastProgressAt':int(time.time()*1000)}
             if resume:
                 for field in ['processed','successful','insufficient','errors']:self.jobs[key][field]=resume[field]
                 self.jobs[key]['results']=list(resume['results']);self.jobs[key]['failures']=list(resume['failures'])
@@ -230,6 +244,7 @@ class ScanService:
                     try:
                         item=future.result()
                         if item is None:continue
+                        if job['cancel'].is_set():continue
                         with self.lock:
                             job['results'].append(item)
                             if item['signalValidity']=='INSUFFICIENT':job['insufficient']+=1
@@ -240,9 +255,27 @@ class ScanService:
                             job['insufficient']+=1
                     except Exception as error:
                         if future.cancelled():continue
+                        provider=isinstance(error,ProviderError)
+                        is_history_short=provider and 'INSUFFICIENT_PROVIDER_HISTORY' in str(error)
+                        http=error.status if provider else None
+                        code=('INSUFFICIENT_PROVIDER_HISTORY' if is_history_short else
+                              'PROVIDER_RATE_LIMIT' if http==429 else
+                              'PROVIDER_NOT_FOUND' if http==404 else
+                              'INVALID_CANDLES' if provider and http==422 else
+                              'PROVIDER_ERROR' if provider else 'CORE_ERROR')
                         with self.lock:
-                            job['failures'].append({'symbol':futures[future],'code':'PROVIDER_OR_CORE_ERROR','error':str(error)[:400],'provider':'YAHOO' if isinstance(error,ProviderError) else None,'interval':job['interval'],'stage':getattr(error,'stage','CORE_OR_ADAPTER'),'httpStatus':error.status if isinstance(error,ProviderError) else None,'attempts':getattr(error,'attempts',1),'retryOutcome':'EXHAUSTED' if getattr(error,'attempts',1)>1 else 'NOT_RETRIED','classification':'PROVIDER' if isinstance(error,ProviderError) else 'CORE_OR_ADAPTER'});job['errors']+=1
-                    with self.lock:job['processed']+=1
+                            job['failures'].append({'symbol':futures[future],'code':code,'error':str(error)[:400],
+                                'provider':'YAHOO' if provider else None,'interval':job['interval'],
+                                'stage':getattr(error,'stage','CORE_OR_ADAPTER'),'httpStatus':http,
+                                'attempts':getattr(error,'attempts',1),'lastBarTime':None,
+                                'requiredClosedBars':220 if is_history_short else None,
+                                'retryOutcome':'EXHAUSTED' if getattr(error,'attempts',1)>1 else 'NOT_RETRIED',
+                                'classification':'INSUFFICIENT_DATA' if is_history_short else 'PROVIDER' if provider else 'CORE_OR_ADAPTER'})
+                            if is_history_short:job['insufficient']+=1
+                            else:job['errors']+=1
+                    with self.lock:
+                        job['processed']+=1
+                        job['lastProgressAt']=int(time.time()*1000)
                     self._checkpoint(job)
             with self.lock:
                 job['status']='CANCELLED' if job['cancel'].is_set() else 'COMPLETED_WITH_ERRORS' if job['errors'] else 'COMPLETE'
@@ -274,7 +307,14 @@ class ScanService:
             if key not in self.jobs:raise KeyError('Tarama bulunamadı veya oturum süresi doldu.')
             job=self.jobs[key]
             if job.get('owner','local')!=owner:raise KeyError('Tarama bulunamadı.')
+            label=('İptal edildi' if job['status']=='CANCELLED' else
+                   'Tarama başarısız' if job['status'] in {'FAILED','INTERRUPTED'} else
+                   'Hatalarla tamamlandı' if job['status']=='COMPLETED_WITH_ERRORS' else
+                   'Eksik veriyle tamamlandı' if job['status']=='COMPLETE' and job['insufficient'] else
+                   'Tamamlandı' if job['status']=='COMPLETE' else
+                   'Tarama sürüyor' if job['status'] in {'RUNNING','QUEUED','CANCELLING'} else job['status'])
             return {**{k:v for k,v in job.items() if k not in {'cancel','symbols','universeSymbols','identities','results','owner'}},
+                    'completionLabel':label,'pending':max(0,job['total']-job['processed']),
                     'storage':{'ephemeral':not (self.persist and scan_storage_is_persistent(self.directory)),
                                'checkpointSaved':job.get('checkpointSaved',False),'error':job.get('checkpointError'),
                                'retentionHours':2,'maxRetainedJobs':4}}
