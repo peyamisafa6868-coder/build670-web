@@ -983,6 +983,21 @@
         text(id,id==='toggleSupportResistance'?'S/D'+(active?' ✓':''):id.replace('toggle','').toUpperCase()+(active?' ✓':''));};
       bind(id,()=>{chartOptions[id]=!chartOptions[id];if(id==='toggleSupportResistance'){chartOptions.toggleSupport=chartOptions.toggleResistance=chartOptions[id];refreshSideButtons();}paint();if(chartData)drawChart($('chart'),chartData);});paint();
     }
+    // Relative-volume fill is display-only and never changes OHLCV or signal calculations.
+    const volumeToggleHost=$('toggleVolume')?.parentElement||$('toggleSupportResistance')?.parentElement;
+    if(volumeToggleHost&&!document.getElementById('apk-toggleRelativeVolumeFill')){
+      const button=document.createElement('button');button.type='button';
+      button.id='apk-toggleRelativeVolumeFill';button.className='apk-node apk-Button apk-action';
+      button.style.cssText='min-height:48px;padding:0 12px;border-radius:8px;border:1px solid #2b6780;cursor:pointer';
+      const paint=()=>{const active=!!chartOptions.toggleRelativeVolumeFill;
+        button.textContent='Mum dolgusu · Göreli hacim'+(active?' ✓':'');
+        button.setAttribute('aria-pressed',String(active));
+        button.style.background=active?'#18caa8':'#08293d';button.style.color=active?'#042132':'#e1f3fb';};
+      button.onclick=()=>{chartOptions.toggleRelativeVolumeFill=!chartOptions.toggleRelativeVolumeFill;
+        try{localStorage.setItem('build670_relative_volume_fill',JSON.stringify(chartOptions.toggleRelativeVolumeFill));}catch{}
+        paint();if(chartData)drawChart($('chart'),chartData);};
+      volumeToggleHost.append(button);paint();
+    }
     const nativeToggle=$('toggleSupportResistance'),toggleHost=nativeToggle?.parentElement;
     if(toggleHost){
       const entries=[['toggleSupport','DESTEK','#16f2a3'],['toggleResistance','DİRENÇ','#ff5b7f']];
@@ -1102,7 +1117,7 @@
     for(const [tf,label] of [['1m','1 DK'],['3m','3 DK'],['5m','5 DK'],['10m','10 DK'],['15m','15 DK'],['30m','30 DK'],['60m','1 SAAT'],['240m','4 SAAT'],['1d','1 GÜN'],['1w','1 HAFTA'],['1mo','1 AY'],['all','TÜMÜ']])d.append(action(label,()=>{d.close();callback(tf);}));
     d.addEventListener('close',()=>d.remove());document.body.append(d);d.showModal();
   }
-  const chartOptions={toggleEma9:true,toggleEma21:true,toggleVwap:true,toggleEma20:false,toggleEma50:false,toggleEma200:false,toggleBollinger:false,toggleMacd:false,toggleTrend:false,toggleChannel:false,toggleSupportResistance:true,toggleSupport:true,toggleResistance:true};
+  const chartOptions={toggleRelativeVolumeFill:(()=>{try{return JSON.parse(localStorage.getItem('build670_relative_volume_fill'))===true;}catch{return false;}})(),toggleEma9:true,toggleEma21:true,toggleVwap:true,toggleEma20:false,toggleEma50:false,toggleEma200:false,toggleBollinger:false,toggleMacd:false,toggleTrend:false,toggleChannel:false,toggleSupportResistance:true,toggleSupport:true,toggleResistance:true};
   function drawChart(container,data){return AndroidPriceChart.mount(container,data,{options:chartOptions,onModel:m=>{
     if(screen!=='stock_detail'||chartData!==data)return;const e=m.extended,t=m.trend,l=m.levels;
     // Expanded indicators come from the exact same closed-candle chart model.
