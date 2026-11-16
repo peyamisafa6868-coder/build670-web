@@ -15,8 +15,7 @@ class StorageDirectoryTests(TestCase):
             self.assertEqual(service.jobs, {})
 
     def test_default_is_unchanged(self):
-        with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop('BUILD670_SCAN_DATA_DIR', None)
+        with patch.dict(os.environ, {k:v for k,v in os.environ.items() if k != 'BUILD670_SCAN_DATA_DIR'}, clear=True):
             service = ScanService(persist=False, universe=None)
         self.assertEqual(service.directory.name, 'runtime-data')
 
