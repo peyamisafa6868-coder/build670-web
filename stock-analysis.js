@@ -73,8 +73,8 @@
   function readable(input,interval,calculator,now=Date.now()) {
     const rows=clean(input);
     if(rows.length<31||rows.some(b=>b.timestamp>now+60000))return null;
-    // Android ReadableStockAnalysis always excludes the newest provider observation.
-    const closed=rows.slice(0,-1).filter(b=>b.closed===true);
+    // Only confirmed closed bars may enter the calculation; do not drop a verified last close.
+    const closed=rows.filter(b=>b.closed===true);
     if(closed.length<30)return null;
     if(!daily.has(interval)){
       const ms=Number.parseInt(interval,10)*60000,last=closed.slice(-30);let pairs=0;
@@ -148,8 +148,8 @@
     put('stockPivotResistances',levels.resistances.length?levels.resistances.map(format).join(' · '):'Bu dönemde doğrulanmış direnç pivotu yok.');
     const synthetic=options.demo||offlineIsTestSource(payload.source);
     if(synthetic){put('easyPriceMovement','SENTETİK TEST VERİSİ: Gerçek hisse yorumu değildir.');put('easyDataSource',payload.source||'SENTETİK DEMO');return;}
-    const analysis=readable(payload.candles,payload.interval||state.interval);
-    put('easyDataSource',`${payload.symbol||state.symbol} · ${labels[payload.interval||state.interval]} · Kaynak: ${payload.source||'KULLANICI DOSYASI'}. En yeni sağlayıcı mumu açıklamaya alınmaz; yatırım tavsiyesi değildir.`);
+    const analysis=readable(closed.map(b=>({...b,closed:true})),payload.interval||state.interval);
+    put('easyDataSource',`${payload.symbol||state.symbol} · ${labels[payload.interval||state.interval]} · Kaynak: ${payload.source||'KULLANICI DOSYASI'}. Yalnızca doğrulanmış kapanmış mumlar kullanılır; yatırım tavsiyesi değildir.`);
     if(!analysis){put('easyPriceMovement','En az 31 geçerli sağlayıcı mumu ve seçilen döneme uygun süreklilik gerekir. Eksik veriden yön üretilmez.');return;}
     // closedCandles() already excludes forming observations; preserve its result
     // even when the transport omits an explicit closed=true property.
@@ -158,10 +158,10 @@
     evidenceGraphic('easyPriceMovement',last36.map(b=>b.close));
     evidenceGraphic('easyImportantLevels',last20.map(b=>b.close));
     evidenceGraphic('easyChangeConditions',last20.map(b=>b.close));
-    evidenceGraphic('easyWhyInterest',last20.map(b=>b.volume),'bars');
-    const previous=last20.at(-2)?.close,nowPrice=last20.at(-1)?.close;
+    evidenceGraphic('easyWhyInterest',[...verified.slice(-21,-1).map(b=>b.volume),verified.at(-1)?.volume],'bars');
+    const previous=verified.at(-2)?.close,nowPrice=verified.at(-1)?.close;
     const pct=Number.isFinite(previous)&&previous>0?100*(nowPrice/previous-1):null;
-    const text=analysis.direction==='RISING'?'fiyat, kısa ve orta vadeli fiyat ortalamalarının üstünde. Bu durum incelenen mumlarda yukarı yönün daha belirgin olduğunu gösterir; sonraki fiyatı garanti etmez.':analysis.direction==='FALLING'?'fiyat, kısa ve orta vadeli fiyat ortalamalarının altında. Bu durum incelenen mumlarda satış yönünün daha baskın olduğunu gösterir; düşüşün süreceği kesin değildir.':'fiyat ve kısa vadeli ortalamalar aynı yönde değil. Bu yüzden net bir yükseliş veya düşüş demek için yeterli uyum yok.';
+    const text=analysis.direction='RISING'?'fiyat, kısa ve orta vadeli fiyat ortalamalarının üstünde. Bu durum incelenen mumlarda yukarı yönün daha belirgin olduğunu gösterir; sonraki fiyatı garanti etmez.':analysis.direction==='FALLING'?'fiyat, kısa ve orta vadeli fiyat ortalamalarının altında. Bu durum incelenen mumlarda satış yönünün daha baskın olduğunu gösterir; düşüşün süreceği kesin değildir.':'fiyat ve kısa vadeli ortalamalar aynı yönde değil. Bu yüzden net bir yükseliş veya düşüş demek için yeterli uyum yok.';
     put('easyPriceMovement',`Son kapanış ${format(nowPrice)} TL${pct==null?'':', önceki kapanışa göre '+(pct>=0?'+':'')+format(pct)+'%'}. Seçilen ${analysis.period} grafiğinde ${text}`);
     put('easyImportantLevels',`Son kapanış ${format(nowPrice)} TL; destek ${format(analysis.support)} TL (${format((nowPrice/analysis.support-1)*100)}% aşağıda), direnç ${format(analysis.resistance)} TL (${format((analysis.resistance/nowPrice-1)*100)}% yukarıda). Bunlar önceki 20 mumdan hesaplanan izleme seviyeleridir; kesin alım veya satım noktası değildir.`);
     put('easyChangeConditions',`Sonraki doğrulanmış kapanışlar ${format(analysis.resistance)} üstüne çıkar ve işlem hacmi de artarsa yukarı yön güçlenebilir. ${format(analysis.support)} altına inerlerse görünüm zayıflayabilir. İki seviye arasında kalırsa yön hâlâ belirsiz olabilir.`);
