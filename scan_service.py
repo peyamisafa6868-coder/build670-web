@@ -310,11 +310,11 @@ class ScanService:
             label=('İptal edildi' if job['status']=='CANCELLED' else
                    'Tarama başarısız' if job['status'] in {'FAILED','INTERRUPTED'} else
                    'Hatalarla tamamlandı' if job['status']=='COMPLETED_WITH_ERRORS' else
-                   'Eksik veriyle tamamlandı' if job['status']=='COMPLETE' and job['insufficient'] else
+                   'Eksik veriyle tamamlandı' if job['status']=='COMPLETE' and job.get('insufficient',0) else
                    'Tamamlandı' if job['status']=='COMPLETE' else
                    'Tarama sürüyor' if job['status'] in {'RUNNING','QUEUED','CANCELLING'} else job['status'])
             return {**{k:v for k,v in job.items() if k not in {'cancel','symbols','universeSymbols','identities','results','owner'}},
-                    'completionLabel':label,'pending':max(0,job['total']-job['processed']),
+                    'completionLabel':label,'pending':max(0,job.get('total',0)-job.get('processed',0)),
                     'storage':{'ephemeral':not (self.persist and scan_storage_is_persistent(self.directory)),
                                'checkpointSaved':job.get('checkpointSaved',False),'error':job.get('checkpointError'),
                                'retentionHours':2,'maxRetainedJobs':4}}
