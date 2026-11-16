@@ -202,7 +202,7 @@
     for(const observer of homeObservers)observer.disconnect();homeObservers=[];
     list.replaceChildren();list.style.width='100%';list.style.minWidth='0';
     const job=BistTerminal.job;
-    const all=job?.id===homeSourceId?homeCache:job?.id===lastJob?.id?lastRows:[];
+    const all=job?.id===homeSourceId?homeCache:[]; // never sort an incomplete result-page cache
     const delayed=job?.signalAttestationVerified!==true;
     const selected=AndroidResults.homeSelect(all,{trend:homeTrendFilter,signal:homeSignalFilter,attestationVerified:!delayed});
     const rows=[...selected].sort((a,b)=>(Number(b.dataTimestamp)||0)-(Number(a.dataTimestamp)||0)||a.symbol.localeCompare(b.symbol,'tr'));
@@ -217,6 +217,7 @@
       el('strong','','Tarama: '+(job?.id||'Henüz başlatılmadı')+' • '+AndroidResults.scanStatusLabel(job)),
       el('span','','Periyot: '+(job?.interval||settings.interval)+' • Sağlayıcı: '+(job?.provider||'Kaynak doğrulanmadı')),
       el('span','','Son kapanmış mum (TR): '+date(lastTime)+' • İş bitişi (TR): '+date(job?.completedAt)),
+      ...(job?.benchmarkError?[el('span','','XU100 karşılaştırma verisi alınamadı: '+job.benchmarkError)]:[]),
       el('span','',progress.processed+'/'+progress.total+' işlendi • %'+num(progress.percentage,1)+(homeLoading?' • Sonuçlar yükleniyor':'')+(homeLoadError?' • Yükleme hatası: '+homeLoadError:''))
     );
     if(delayed)meta.append(el('strong','apk-today-delayed','Gecikmeli analiz • Onaylı AL/SAT yok'));
@@ -352,7 +353,7 @@
     text('scanState',statusLabel+' • '+progress.processed+'/'+progress.total);
     text('btnStartScan',['QUEUED','RUNNING','CANCELLING'].includes(job.status)?'■\nDURDUR':'▶\nBAŞLAT');show('progress',['QUEUED','RUNNING','CANCELLING'].includes(job.status));
     const storage=job.storage,stored=storage?storage.error?'Tarama kaydı yazılamadı: '+storage.error:storage.checkpointSaved?(storage.ephemeral?'Geçici kayıt':'Yeniden açılış için kaydedildi')+' • son '+storage.maxRetainedJobs+' tarama / '+storage.retentionHours+' saat':'Kontrol noktası henüz yazılmadı':'';
-    text('scanCoverageSummary','Analiz üretildi '+job.successful+' • Veri yetersiz '+job.insufficient+' • Hata '+job.errors+' • Bekliyor '+progress.pending+'\n'+job.provider+(job.lastRetry?'\nSağlayıcı yeniden denenecek: '+job.lastRetry.symbol+' • '+job.lastRetry.attempt+' deneme • '+num(job.lastRetry.waitSeconds,1)+' sn bekleme':'')+(stored?'\n'+stored:''));
+    text('scanCoverageSummary','Analiz üretildi '+job.successful+' • Veri yetersiz '+job.insufficient+' • Hata '+job.errors+' • Bekliyor '+progress.pending+'\n'+job.provider+((['QUEUED','RUNNING','CANCELLING'].includes(job.status)&&job.lastRetry)?'\nSağlayıcı yeniden denenecek: '+job.lastRetry.symbol+' • '+job.lastRetry.attempt+' deneme • '+num(job.lastRetry.waitSeconds,1)+' sn bekleme':'')+(stored?'\n'+stored:''));
     for(const bar of app.querySelectorAll('progress'))bar.value=job.total?job.processed/job.total*100:0;
   }
   function filterDialog(){
@@ -388,8 +389,8 @@
             if(version!==route)return;records.push(...next.failures);
           }
           if(version!==route)return;
-          const insufficient=records.filter(issue=>issue.code==='INSUFFICIENT_HISTORY');
-          const providerErrors=records.filter(issue=>issue.code!=='INSUFFICIENT_HISTORY');
+          const insufficient=records.filter(issue=>issue.code==='INSUFFICIENT_HISTORY'||issue.classification==='INSUFFICIENT_DATA');
+          const providerErrors=records.filter(issue=>issue.code!=='INSUFFICIENT_HISTORY'&&issue.classification!=='INSUFFICIENT_DATA');
           const heading=el('strong','',records.length+' / '+first.total+' kayıt • '+insufficient.length+' yetersiz geçmiş • '+providerErrors.length+' sağlayıcı/hesap hatası');
           const explanation=el('p','terminal-note','Yetersiz geçmiş bir fiyat hatası değildir: gerekli kapanmış mum sayısına ulaşılamadı, teknik hesap üretilmedi. 404 sembol/kaynak eşleşmesi; 502 ise veri sağlayıcısı/yanıt sorunu olabilir. Bunlar doğrulanmış AL/SAT sinyali değildir.');
           failuresBox.replaceChildren(heading,explanation);
@@ -397,9 +398,9 @@
             const code=String(issue.code||'HATA');
             const reason=String(issue.error||'Neden belirtilmedi').replace(new RegExp('^'+code+':\\s*'),'').slice(0,240);
             const have=Number.isInteger(issue.closedBarCount)?issue.closedBarCount+' / '+(issue.requiredClosedBars||220)+' kapanmış mum • ':'';
-            const label=code==='INSUFFICIENT_HISTORY'?'YETERSİZ GEÇMİŞ':(issue.classification==='PROVIDER'?'SAĞLAYICI HATASI':code);
+            const label=(code==='INSUFFICIENT_HISTORY'||issue.classification==='INSUFFICIENT_DATA')?'YETERSİZ GEÇMİŞ':(issue.classification==='PROVIDER'?'SAĞLAYICI HATASI':code);
             const line=el('div','',String(issue.symbol||'—')+' • '+have+label+' • '+reason);
-            line.dataset.failureCategory=code==='INSUFFICIENT_HISTORY'?'insufficient':'provider';
+            line.dataset.failureCategory=(code==='INSUFFICIENT_HISTORY'||issue.classification==='INSUFFICIENT_DATA')?'insufficient':'provider';
             failuresBox.append(line);
           }
           if(!records.length)failuresBox.append(el('div','','Kaydedilmiş ayrıntılı hata yok.'));
