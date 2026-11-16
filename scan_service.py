@@ -79,11 +79,19 @@ def history_stock(symbol,interval,identity=None,fetcher=yahoo_scan_history,core=
         'currency':'TRY','market':'BIST','historySymbol':symbol,'exchangeTimezone':'Europe/Istanbul'}
 
 
+def scan_storage_is_persistent(directory):
+    """Only an explicit mounted storage ancestor (not the root filesystem) counts."""
+    path=Path(directory).resolve()
+    return any(os.path.ismount(parent) for parent in (path, *path.parents) if str(parent) != '/')
+
+
 class ScanService:
     def __init__(self,core=CORE,fetcher=yahoo_scan_history,universe=UNIVERSE,persist=True,directory=None):
         self.core,self.fetcher,self.universe,self.persist=core,fetcher,universe,persist
         self.lock=threading.RLock();self.jobs={};self.last_start=0
-        self.directory=Path(directory) if directory is not None else ROOT/'runtime-data'
+        self.directory=Path(directory) if directory is not None else Path(os.environ.get('BUILD670_SCAN_DATA_DIR', str(ROOT/'runtime-data')))
+        if not self.directory.is_absolute():
+            raise ValueError('Tarama veri dizini mutlak yol olmalı.')
         if persist:
             for path in sorted(self.directory.glob('scan-*.json'),key=lambda p:p.stat().st_mtime)[-4:]:
                 try:
@@ -97,7 +105,7 @@ class ScanService:
                     if data['total']!=len(symbols) or data['processed']!=len(done) or data['processed']!=data['successful']+data['insufficient']+data['errors'] or not done<=set(symbols):continue
                     if data['status'] in {'QUEUED','RUNNING','CANCELLING'}:data['status']='INTERRUPTED'
                     data.update(cancel=threading.Event(),symbols=[],identities={},
-                                checkpointSaved=True,checkpointError=None,ephemeral=not os.path.ismount(self.directory))
+                                checkpointSaved=True,checkpointError=None,ephemeral=not scan_storage_is_persistent(self.directory))
                     self.jobs[data['id']]=data
                 except (OSError,ValueError,KeyError,TypeError):continue
 
@@ -248,7 +256,7 @@ class ScanService:
         try:
             directory=self.directory;directory.mkdir(parents=True,exist_ok=True)
             data={k:v for k,v in job.items() if k not in {'cancel','identities','symbols'}}
-            data.update(ephemeral=not os.path.ismount(directory),checkpointSaved=True,checkpointError=None)
+            data.update(ephemeral=not scan_storage_is_persistent(directory),checkpointSaved=True,checkpointError=None)
             raw=json.dumps(data,ensure_ascii=False,allow_nan=False)
             target=directory/('scan-'+job['id']+'.json');temporary=target.with_suffix('.tmp')
             with temporary.open('w') as stream:
@@ -267,7 +275,7 @@ class ScanService:
             job=self.jobs[key]
             if job.get('owner','local')!=owner:raise KeyError('Tarama bulunamadı.')
             return {**{k:v for k,v in job.items() if k not in {'cancel','symbols','universeSymbols','identities','results','owner'}},
-                    'storage':{'ephemeral':not (self.persist and os.path.ismount(self.directory)),
+                    'storage':{'ephemeral':not (self.persist and scan_storage_is_persistent(self.directory)),
                                'checkpointSaved':job.get('checkpointSaved',False),'error':job.get('checkpointError'),
                                'retentionHours':2,'maxRetainedJobs':4}}
 

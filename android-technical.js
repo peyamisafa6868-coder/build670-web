@@ -12,6 +12,46 @@
       const bg=d==='UP'?'up':d==='DOWN'?'down':'neutral';if(get('trendRow'+prefix))L.background(get('trendRow'+prefix),'@drawable/bg_trend_row_'+bg);if(get('trend'+prefix+'Comment'))L.background(get('trend'+prefix+'Comment'),'@drawable/bg_trend_chip_'+bg);
     }
     const container=get('indicatorContainer');container?.replaceChildren();
+    // XML exposes three native tabs, but no click handlers were registered.
+    // Keep indicators as the default panel and never fabricate chart patterns.
+    const tabIds=['techTabIndicators','techTabPattern','techTabLevels'];
+    const detailPanel=document.createElement('section');
+    detailPanel.id='apk-tech-tab-detail';
+    detailPanel.setAttribute('aria-live','polite');
+    detailPanel.style.cssText='margin-top:10px;padding:14px;background:#092a3e;border-radius:8px;color:#e9f3f7;line-height:1.6';
+    container?.insertAdjacentElement('afterend',detailPanel);
+    function selectTab(tab){
+      if(!alive())return;
+      for(const id of tabIds){
+        const node=get(id),active=id===tab;
+        if(!node)continue;
+        node.dataset.techActive=String(active);
+        node.setAttribute('aria-pressed',String(active));
+        node.setAttribute('aria-selected',String(active));
+        node.style.background=active?'#146a87':'';
+        node.style.outline=active?'2px solid #64d4ed':'';
+      }
+      if(container)container.hidden=tab!=='techTabIndicators';
+      detailPanel.hidden=tab==='techTabIndicators';
+      detailPanel.replaceChildren();
+      if(tab==='techTabPattern'){
+        const heading=document.createElement('strong');heading.textContent='Formasyon analizi';
+        const note=document.createElement('p');note.textContent='Doğrulanmış mum formasyonu sonucu mevcut değil. OHLCV verisinden doğrulanmayan formasyon veya AL/SAT sinyali üretilmez.';
+        detailPanel.append(heading,note);
+      }else if(tab==='techTabLevels'){
+        const heading=document.createElement('strong');heading.textContent='Destek / Direnç';
+        detailPanel.append(heading);
+        for(const [label,value] of [['Destek',x?.technical?.support],['Direnç',x?.technical?.resistance]]){
+          const line=document.createElement('p');
+          line.textContent=label+': '+fmt(value);
+          detailPanel.append(line);
+        }
+        const note=document.createElement('small');note.textContent='Seviyeler mevcut teknik analiz kaydından gösterilir; canlı fiyat veya işlem onayı değildir.';
+        detailPanel.append(note);
+      }
+    }
+    for(const id of tabIds){const node=get(id);if(node){node.addEventListener('click',()=>selectTab(id));node.setAttribute('type','button');}}
+    selectTab('techTabIndicators');
     if(!x){text('techSubtitle','Seçili hisse yok');text('techSignal','VERİ YOK');text('techScoreLine','Teknik analiz için bir hisse seçin.');text('multiTfStatus','Çoklu zaman dilimi analizi için bir hisse seçin.');text('techAdviceLabel','VERİ YOK');text('techAdviceDetail','Teknik sinyal özeti üretilemedi.');frames.forEach((_,i)=>row(i));return ()=>{disposed=true;};}
     const t=x.technical||{},price=x.price;
     text('techSubtitle',(x.companyName||x.symbol)+'  ('+x.symbol.toUpperCase()+')');

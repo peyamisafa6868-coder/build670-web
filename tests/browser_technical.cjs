@@ -8,6 +8,17 @@ const {root,launch}=require('./browser_helpers.cjs'),fs=require('node:fs'),path=
   BistAndroid.navigate('technical_analysis',{symbol:'ASELS',opportunity:{symbol:'ASELS',companyName:'EXPLICIT ANALYSIS FIXTURE',price:120,technicalLabel:'GECİKMELİ',technical:{rsi14:50,macd:2,macdSignal:1,ema20:110,ema50:105,ema200:100,volumeRatio:1.5,atr14:2,support:95,resistance:140}}});
  });
  await page.waitForFunction(()=>document.getElementById('apk-techAdviceScore').textContent.includes('/100'));assert.deepEqual((await page.evaluate(()=>__frames)).sort(),['1d','3m','5m','60m']);assert.equal(await page.locator('[data-native-item=indicator]').count(),12);assert.equal(await page.locator('#apk-trend3mTrend').innerText(),'YÜKSELİŞ');assert.equal(await page.locator('#apk-trend5mTrend').innerText(),'DÜŞÜŞ');assert.equal(await page.locator('#apk-trend1hTrend').innerText(),'YATAY');report.checks.push('Twelve original indicator rows and four independent timeframe regressions are populated');
+ await page.locator('#apk-techTabPattern').click();
+ assert.equal(await page.locator('#apk-techTabPattern').getAttribute('aria-pressed'),'true');
+ assert.match(await page.locator('#apk-tech-tab-detail').innerText(),/Doğrulanmış mum formasyonu sonucu mevcut değil/);
+ assert.equal(await page.locator('#apk-indicatorContainer').isVisible(),false);
+ await page.locator('#apk-techTabLevels').click();
+ assert.match(await page.locator('#apk-tech-tab-detail').innerText(),/Destek: 95,00/);
+ assert.match(await page.locator('#apk-tech-tab-detail').innerText(),/Direnç: 140,00/);
+ await page.locator('#apk-techTabIndicators').click();
+ assert.equal(await page.locator('#apk-techTabIndicators').getAttribute('aria-pressed'),'true');
+ assert.equal(await page.locator('#apk-indicatorContainer').isVisible(),true);
+ report.checks.push('All three native technical tabs open distinct panels and retain real support/resistance values');
  assert.match(await page.locator('#apk-techAdviceEvidence').innerText(),/Kanıt kalitesi/);assert.match(await page.locator('#apk-techAdviceDetail').innerText(),/NEDEN BU SONUÇ/);assert.match(await page.locator('#apk-techAdviceInvalidation').innerText(),/./);assert.equal(await page.locator('#apk-techSignal').innerText(),'TEKNİK İZLEME • AL/SAT ONAYI YOK');report.checks.push('Original evidence, risk and invalidation appear without granting a delayed trade signal');await page.screenshot({path:path.join(out,'filled-390.png')});
  await page.evaluate(()=>{BistAndroid.navigate('main');window.__release=null;window.BistYahooAuto={fetch:()=>new Promise(r=>{__release=r;})};BistAndroid.navigate('technical_analysis',{symbol:'OLD',opportunity:{symbol:'OLD',price:100,technical:{}}});});await page.waitForFunction(()=>typeof __release==='function');await page.evaluate(()=>{BistAndroid.navigate('settings');__release({candles:[]});});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>BistAndroid.screen),'settings');assert.equal(await page.locator('dialog[open]').count(),0);report.checks.push('A late timeframe result cannot repaint a different route');
  assert.deepEqual(report.errors,[]);report.status='passed';
