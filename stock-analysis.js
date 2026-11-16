@@ -70,11 +70,11 @@
     }
     return {resistances:distinct(false),supports:distinct(true)};
   }
-  function readable(input,interval,calculator,now=Date.now()) {
+  function readable(input,interval,calculator,now=Date.now(),alreadyClosed=false) {
     const rows=clean(input);
     if(rows.length<31||rows.some(b=>b.timestamp>now+60000))return null;
-    // Only confirmed closed bars may enter the calculation; do not drop a verified last close.
-    const closed=rows.filter(b=>b.closed===true);
+    // Preserve Kotlin parity for raw provider series; normalized closed-only input opts out of dropping the last bar.
+    const closed=(alreadyClosed?rows:rows.slice(0,-1)).filter(b=>b.closed===true);
     if(closed.length<30)return null;
     if(!daily.has(interval)){
       const ms=Number.parseInt(interval,10)*60000,last=closed.slice(-30);let pairs=0;
@@ -148,7 +148,7 @@
     put('stockPivotResistances',levels.resistances.length?levels.resistances.map(format).join(' · '):'Bu dönemde doğrulanmış direnç pivotu yok.');
     const synthetic=options.demo||offlineIsTestSource(payload.source);
     if(synthetic){put('easyPriceMovement','SENTETİK TEST VERİSİ: Gerçek hisse yorumu değildir.');put('easyDataSource',payload.source||'SENTETİK DEMO');return;}
-    const analysis=readable(closed.map(b=>({...b,closed:true})),payload.interval||state.interval);
+    const analysis=readable(closed.map(b=>({...b,closed:true})),payload.interval||state.interval,undefined,Date.now(),true);
     put('easyDataSource',`${payload.symbol||state.symbol} · ${labels[payload.interval||state.interval]} · Kaynak: ${payload.source||'KULLANICI DOSYASI'}. Yalnızca doğrulanmış kapanmış mumlar kullanılır; yatırım tavsiyesi değildir.`);
     if(!analysis){put('easyPriceMovement','En az 31 geçerli sağlayıcı mumu ve seçilen döneme uygun süreklilik gerekir. Eksik veriden yön üretilmez.');return;}
     // closedCandles() already excludes forming observations; preserve its result
