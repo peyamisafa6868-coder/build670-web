@@ -39,6 +39,7 @@ jobs:
           node tests/test_chart_support_levels.cjs
           node tests/test_chart_integrity.cjs
           node tests/test_chart_canvas_upgrade.cjs
+          node tests/test_relative_volume_fill.cjs
           python tests/verify_chart_math.py
       - name: Mouse interaction unit regressions
         run: node tests/chart_mouse_unit.cjs
