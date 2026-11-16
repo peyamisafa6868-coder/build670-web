@@ -134,7 +134,7 @@ class ScanServiceTests(unittest.TestCase):
         retried=service.start({'scope':'discovered','interval':'1d','resumeFrom':original,'retryFailuresOnly':True})['id']
         new=wait(service,retried)
         self.assertEqual((new['total'],new['processed'],new['successful'],new['insufficient'],new['errors']),(3,3,3,0,0))
-        self.assertEqual(set(calls),{'NEW','BAD'})
+        self.assertEqual(set(calls)-{'XU100'},{'NEW','BAD'})  # benchmark is fetched independently
         results=service.results(retried,page=1,size=100)['results']
         self.assertEqual({x['symbol'] for x in results},{'GOOD','NEW','BAD'})
         self.assertEqual(len(results),3)
