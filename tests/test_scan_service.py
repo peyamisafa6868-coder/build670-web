@@ -103,9 +103,43 @@ class ScanServiceTests(unittest.TestCase):
             self.assertIn('THREE',calls);self.assertNotIn('ONE',calls);self.assertNotIn('TWO',calls)
             self.assertEqual(len(restarted.results(resumed)['results']),2)
             calls.clear();retried=restarted.start({'scope':'discovered','interval':'1d','resumeFrom':resumed,'retryFailuresOnly':True})['id'];status=wait(restarted,retried)
-            self.assertEqual((status['total'],status['processed'],status['successful'],status['errors']),(1,1,1,0))
+            self.assertEqual((status['total'],status['processed'],status['successful'],status['errors']),(3,3,3,0))
             self.assertIn('TWO',calls);self.assertNotIn('ONE',calls);self.assertNotIn('THREE',calls)
             self.assertEqual(restarted.status(resumed)['errors'],1)
+
+    def test_219_vs_220_closed_bars_and_only_insufficient_completion_label(self):
+        service=ScanService(StubCore(),lambda s,*args:{'candles':candles(219 if s=='NEW' else 220),'fetchedAt':NOW},FixedUniverse(),persist=False)
+        key=service.start({'symbols':['NEW','READY'],'interval':'1d'})['id']
+        state=wait(service,key)
+        self.assertEqual((state['total'],state['processed'],state['successful'],state['insufficient'],state['errors']),(2,2,1,1,0))
+        self.assertEqual(state['status'],'COMPLETE')
+        self.assertEqual(state['completionLabel'],'Eksik veriyle tamamlandı')
+        self.assertEqual(state['pending'],0)
+        self.assertEqual(state['failures'][0]['closedBarCount'],219)
+        self.assertEqual(state['failures'][0]['requiredClosedBars'],220)
+
+    def test_retry_retains_previous_successes_and_replaces_failed_symbols_without_double_count(self):
+        repaired=False
+        calls=[]
+        def provider(symbol,*args):
+            calls.append(symbol)
+            if not repaired and symbol=='BAD':raise ProviderError('Yahoo HTTP 404',404)
+            return {'candles':candles(219 if not repaired and symbol=='NEW' else 220),'fetchedAt':NOW}
+        service=ScanService(StubCore(),provider,FixedUniverse(),persist=False)
+        original=service.start({'symbols':['GOOD','NEW','BAD'],'interval':'1d'})['id']
+        initial=wait(service,original)
+        self.assertEqual((initial['total'],initial['processed'],initial['successful'],initial['insufficient'],initial['errors']),(3,3,1,1,1))
+        self.assertEqual(initial['completionLabel'],'Hatalarla tamamlandı')
+        repaired=True;calls.clear()
+        retried=service.start({'scope':'discovered','interval':'1d','resumeFrom':original,'retryFailuresOnly':True})['id']
+        new=wait(service,retried)
+        self.assertEqual((new['total'],new['processed'],new['successful'],new['insufficient'],new['errors']),(3,3,3,0,0))
+        self.assertEqual(set(calls),{'NEW','BAD'})
+        results=service.results(retried,page=1,size=100)['results']
+        self.assertEqual({x['symbol'] for x in results},{'GOOD','NEW','BAD'})
+        self.assertEqual(len(results),3)
+        self.assertEqual(service.status(original)['errors'],1)
+        self.assertEqual(new['completionLabel'],'Tamamlandı')
 
     def test_full_632_universe_progress_and_pagination(self):
         calls=[]
