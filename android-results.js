@@ -40,18 +40,18 @@
     if(['CONFLICTING','MIXED'].includes(state))return 'MIXED';
     return 'UNKNOWN';
   }
-  function signalCategory(row){
+  function signalCategory(row,attestationVerified=false){
     if(row?.signalValidity==='INSUFFICIENT')return 'INSUFFICIENT';
     if(row?.signalValidity==='ERROR')return 'ERROR';
-    const verified=row?.signalValidity==='VALID'&&row?.trendDisplay?.verifiedSignal===true;
+    const verified=attestationVerified&&row?.signalValidity==='VALID'&&row?.trendDisplay?.verifiedSignal===true;
     if(verified&&row.direction==='LONG')return 'BUY';
     if(verified&&row.direction==='SHORT')return 'SELL';
     if(row?.signalValidity==='WATCH')return 'WATCH';
     return 'NONE';
   }
-  function homeSelect(rows,{trend='ALL',signal='ALL'}={}){
+  function homeSelect(rows,{trend='ALL',signal='ALL',attestationVerified=false}={}){
     return rows.filter(row=>(trend==='ALL'||trendCategory(row)===trend)
-      &&(signal==='ALL'||signalCategory(row)===signal));
+      &&(signal==='ALL'||(signal==='VERIFIED'?['BUY','SELL'].includes(signalCategory(row,attestationVerified)):signalCategory(row,attestationVerified)===signal)));
   }
   const trendNames={UP:'Yükseliş',DOWN:'Düşüş',FLAT:'Yatay',MIXED:'Çelişkili',UNKNOWN:'Belirsiz'};
   const signalNames={WATCH:'İzleniyor',NONE:'Sinyal yok',INSUFFICIENT:'Yetersiz veri',ERROR:'İşlem hatası',BUY:'Onaylı AL',SELL:'Onaylı SAT'};
