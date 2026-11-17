@@ -127,6 +127,39 @@
     }
     target.insertBefore(svg,target.querySelector('p'));
   }
+  function evidenceLevels(id,support,price,resistance){
+    if(![support,price,resistance].every(Number.isFinite))return;
+    const host=document.getElementById(id)?.closest('section');if(!host)return;
+    const lo=Math.min(support,price,resistance),hi=Math.max(support,price,resistance),span=hi-lo||1;
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','build670-evidence-visual');svg.setAttribute('viewBox','0 0 240 60');
+    svg.setAttribute('role','img');svg.setAttribute('aria-label','Destek, kapanış ve direnç aynı fiyat ekseninde');
+    svg.style.cssText='display:block;width:100%;height:60px;margin:8px 0';
+    const line=(x,y,w,color)=>{const r=document.createElementNS('http://www.w3.org/2000/svg','rect');r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',2);r.setAttribute('fill',color);svg.append(r);};
+    const label=(v,y,color)=>{const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',String(8+224*(v-lo)/span));t.setAttribute('y',String(y));t.setAttribute('font-size','9');t.setAttribute('text-anchor','middle');t.setAttribute('fill',color);t.textContent=format(v);svg.append(t);};
+    line(8,31,224,'#60788b');for(const [v,color,y] of [[support,'#32d2ae',20],[price,'#ffffff',49],[resistance,'#ff9c71',20]]){const x=8+224*(v-lo)/span;line(x-1,27,2,color);label(v,y,color);}
+    host.insertBefore(svg,host.querySelector('p'));
+  }
+  function evidenceScenarios(id,support,price,resistance){
+    if(![support,price,resistance].every(Number.isFinite))return;
+    const host=document.getElementById(id)?.closest('section');if(!host)return;
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','build670-evidence-visual');svg.setAttribute('viewBox','0 0 240 69');
+    svg.setAttribute('role','img');svg.setAttribute('aria-label','Direnç üstü, aralık içi ve destek altı kapanış senaryoları');
+    svg.style.cssText='display:block;width:100%;height:69px;margin:8px 0';
+    const active=price>resistance?0:price<support?2:1;
+    ['Direnç üstü kapanış','Seviyeler arasında','Destek altı kapanış'].forEach((label,i)=>{
+      const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x','9');t.setAttribute('y',String(15+i*23));t.setAttribute('font-size','11');t.setAttribute('fill',i===active?'#39e7c4':'#b4c7d6');t.textContent=(i===active?'● ':'○ ')+label;svg.append(t);
+    });host.insertBefore(svg,host.querySelector('p'));
+  }
+  function evidenceStatus(id,items){
+    const host=document.getElementById(id)?.closest('section');if(!host)return;
+    const graphic=document.createElement('div');graphic.className='build670-evidence-visual';
+    graphic.setAttribute('role','group');graphic.setAttribute('aria-label','Doğrulanmış veri göstergeleri');
+    graphic.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:8px 0';
+    for(const [label,value] of items){const chip=document.createElement('span');chip.style.cssText='border:1px solid #277e8c;border-radius:6px;padding:5px 8px;font-size:12px';chip.textContent=label+': '+value;graphic.append(chip);}
+    host.insertBefore(graphic,host.querySelector('p'));
+  }
   function clearEvidenceGraphics(){
     document.querySelectorAll('.build670-evidence-visual').forEach(node=>node.remove());
   }
@@ -148,26 +181,47 @@
     put('stockPivotResistances',levels.resistances.length?levels.resistances.map(format).join(' · '):'Bu dönemde doğrulanmış direnç pivotu yok.');
     const synthetic=options.demo||offlineIsTestSource(payload.source);
     if(synthetic){put('easyPriceMovement','SENTETİK TEST VERİSİ: Gerçek hisse yorumu değildir.');put('easyDataSource',payload.source||'SENTETİK DEMO');return;}
-    const analysis=readable(closed.map(b=>({...b,closed:true})),payload.interval||state.interval,undefined,Date.now(),true);
-    put('easyDataSource',`${payload.symbol||state.symbol} · ${labels[payload.interval||state.interval]} · Kaynak: ${payload.source||'KULLANICI DOSYASI'}. Yalnızca doğrulanmış kapanmış mumlar kullanılır; yatırım tavsiyesi değildir.`);
-    if(!analysis){put('easyPriceMovement','En az 31 geçerli sağlayıcı mumu ve seçilen döneme uygun süreklilik gerekir. Eksik veriden yön üretilmez.');return;}
-    // closedCandles() already excludes forming observations; preserve its result
-    // even when the transport omits an explicit closed=true property.
-    const verified=closed;
-    const last20=verified.slice(-20),last36=verified.slice(-36);
-    evidenceGraphic('easyPriceMovement',last36.map(b=>b.close));
-    evidenceGraphic('easyImportantLevels',last20.map(b=>b.close));
-    evidenceGraphic('easyChangeConditions',last20.map(b=>b.close));
-    evidenceGraphic('easyWhyInterest',[...verified.slice(-21,-1).map(b=>b.volume),verified.at(-1)?.volume],'bars');
-    evidenceGraphic('easyRisks',verified.slice(-20).map(b=>b.high-b.low),'bars');
-    const previous=verified.at(-2)?.close,nowPrice=verified.at(-1)?.close;
-    const pct=Number.isFinite(previous)&&previous>0?100*(nowPrice/previous-1):null;
-    const text=analysis.direction==='RISING'?'fiyat, kısa ve orta vadeli fiyat ortalamalarının üstünde. Bu durum incelenen mumlarda yukarı yönün daha belirgin olduğunu gösterir; sonraki fiyatı garanti etmez.':analysis.direction==='FALLING'?'fiyat, kısa ve orta vadeli fiyat ortalamalarının altında. Bu durum incelenen mumlarda satış yönünün daha baskın olduğunu gösterir; düşüşün süreceği kesin değildir.':'fiyat ve kısa vadeli ortalamalar aynı yönde değil. Bu yüzden net bir yükseliş veya düşüş demek için yeterli uyum yok.';
-    put('easyPriceMovement',`Son kapanış ${format(nowPrice)} TL${pct==null?'':', önceki kapanışa göre '+(pct>=0?'+':'')+format(pct)+'%'}. Seçilen ${analysis.period} grafiğinde ${text}`);
-    put('easyImportantLevels',`Son kapanış ${format(nowPrice)} TL; destek ${format(analysis.support)} TL (${format((nowPrice/analysis.support-1)*100)}% aşağıda), direnç ${format(analysis.resistance)} TL (${format((analysis.resistance/nowPrice-1)*100)}% yukarıda). Bunlar önceki 20 mumdan hesaplanan izleme seviyeleridir; kesin alım veya satım noktası değildir.`);
-    put('easyChangeConditions',`Sonraki doğrulanmış kapanışlar ${format(analysis.resistance)} üstüne çıkar ve işlem hacmi de artarsa yukarı yön güçlenebilir. ${format(analysis.support)} altına inerlerse görünüm zayıflayabilir. İki seviye arasında kalırsa yön hâlâ belirsiz olabilir.`);
-    put('easyRisks',`ATR(14) son kapanışa göre %${format(analysis.atrPercent)}. Grafik son 20 kapanmış mumun yüksek-düşük fiyat aralığını gösterir; ATR ise önceki kapanışa göre fiyat boşluklarını da hesaba katar. Bu değer gelecek fiyatı veya kesin kaybı tahmin etmez. Veri kaynağı: ${payload.source||'KULLANICI DOSYASI'}. İncelenen kapanış: ${new Date(analysis.sampleTime).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'})}.`);
-    put('easyWhyInterest',`RSI(14) ${format(analysis.rsi)} · Son hacim ${format(last20.at(-1)?.volume)} · Önceki 20 mum ortalamasına oran ${format(analysis.volumeRatio)} kat · ATR(14) %${format(analysis.atrPercent)}. Bunlar geçmiş mumları açıklar; alım gerekçesi veya hedef fiyat değildir.`);
-    put('easyDataSource',document.getElementById('easyDataSource').textContent+` İncelenen mum: ${new Date(analysis.sampleTime).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'})}.`);
+    const symbol=payload.symbol||state.symbol,interval=payload.interval||state.interval;
+    const verified=clean(closed.map(b=>({...b,closed:true}))),last=verified.at(-1),prior=verified.at(-2);
+    const source=payload.source||'KULLANICI DOSYASI',period=labels[interval]||interval;
+    const time=last?new Date(last.timestamp).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'}):'bilinmiyor';
+    put('easyDataSource',symbol+' · '+period+' · Kaynak: '+source+' · Son doğrulanmış mum: '+time+' (TSİ). Yatırım tavsiyesi değildir.');
+    const company=payload.companyProfile;
+    const verifiedCompany=company&&company.symbol===symbol&&/^https:\/\/(?:www\.)?kap\.org\.tr\//.test(company.sourceUrl||'')&&company.companyName&&company.activity;
+    if(verifiedCompany){
+      evidenceStatus('easyCompany',[['Şirket',company.companyName],['Kaynak','KAP'],['Dönem',company.period||'Belirtilmedi']]);
+      put('easyCompany',company.companyName+' — '+company.activity+'. '+(company.products||'')+' Kaynak: '+company.sourceUrl+'. Rapor dönemi: '+(company.period||'belirtilmedi')+'.');
+    }else put('easyCompany','Bu sembol için resmî KAP faaliyet raporu henüz doğrulanmadı. Şirketin faaliyet alanı veya gelir dağılımı tahmin edilmez.');
+    if(!last){
+      for(const id of ['easyPriceMovement','easyImportantLevels','easyChangeConditions','easyWhyInterest','easyRisks'])put(id,'Kapanmış ve doğrulanmış fiyat mumu bulunamadı. Veri sağlayıcısı veya seçili periyot kontrol edilmeli.');
+      return;
+    }
+    const pct=prior&&prior.close>0?100*(last.close/prior.close-1):null;
+    const analysis=readable(verified,interval,undefined,Date.now(),true);
+    const calc=typeof calculateIndicators==='function'?calculateIndicators:null;
+    let indicators=null;
+    try{if(calc&&verified.length>=21)indicators=calc(verified,{intraday:!daily.has(interval)});}catch{}
+    const e9=indicators?.ema9?.at(-1),e21=indicators?.ema21?.at(-1);
+    evidenceGraphic('easyPriceMovement',verified.slice(-36).map(b=>b.close));
+    put('easyPriceMovement','Son '+period+' kapanışı '+format(last.close)+' TL ('+time+' TSİ). '+(pct===null?'Önceki kapanış yok; değişim hesaplanmadı.':'Önceki kapanışa göre '+format(pct)+'%.')+' EMA(9): '+format(e9)+' TL; EMA(21): '+format(e21)+' TL. '+(Number.isFinite(e9)&&Number.isFinite(e21)?'Fiyat kısa ortalamanın '+(last.close>=e9?'üstünde':'altında')+', orta ortalamanın '+(last.close>=e21?'üstünde':'altında')+'.':'Ortalamalar için yeterli doğrulanmış geçmiş bulunamadı.'));
+    const reference=verified.slice(-21,-1);
+    if(reference.length>=20){
+      const support=Math.min(...reference.map(b=>b.low)),resistance=Math.max(...reference.map(b=>b.high));
+      evidenceLevels('easyImportantLevels',support,last.close,resistance);
+      evidenceScenarios('easyChangeConditions',support,last.close,resistance);
+      put('easyImportantLevels','Önceki 20 kapanmış mumun en düşük seviyesi '+format(support)+' TL, en yüksek seviyesi '+format(resistance)+' TL. Son kapanış desteğe göre '+format((last.close/support-1)*100)+'%, dirence göre '+format((last.close/resistance-1)*100)+'%.');
+      const scenario=last.close>resistance?'direncin üstünde':last.close<support?'desteğin altında':'iki seviye arasında';
+      put('easyChangeConditions','Son '+period+' mumu '+format(last.close)+' TL ile '+scenario+' kapandı. '+format(resistance)+' TL üstü veya '+format(support)+' TL altı yalnızca kapanışla değerlendirilir; açık mumun teması onay değildir.');
+      const avg=mean(reference.map(b=>b.volume));
+      evidenceGraphic('easyWhyInterest',[avg,last.volume],'bars');
+      put('easyWhyInterest','Son kapanmış mum hacmi '+format(last.volume)+'; önceki 20 mum ortalaması '+format(avg)+'. '+(avg>0?'Son mum hacmi ortalamanın '+format(last.volume/avg)+' katı.':'Referans hacim sıfır olduğu için oran hesaplanmadı.')+' Fiyat değişimi: '+(pct===null?'önceki kapanış eksik':format(pct)+'%')+'. Hacim birimi sağlayıcıdan doğrulanmalıdır.');
+    }else{
+      const reason='Karşılaştırma için 20 önceki kapanmış mum gerekiyor; '+reference.length+' mevcut.';
+      put('easyImportantLevels',reason);put('easyChangeConditions',reason);put('easyWhyInterest',reason);
+    }
+    const atr=indicators?.atr?.at(-1),atrPct=Number.isFinite(atr)&&last.close>0?100*atr/last.close:null;
+    evidenceStatus('easyRisks',[['ATR(14)',format(atr)+' TL'],['ATR / fiyat',format(atrPct)+'%'],['Son mum',time],['Kaynak',source]]);
+    put('easyRisks',Number.isFinite(atr)?'ATR(14) '+format(atr)+' TL; son kapanışın %'+format(atrPct)+' düzeyinde.':'ATR(14) hesaplamak için yeterli geçmiş yok.')+' Son kapanmış mum '+time+' TSİ. Kaynak: '+source+'. ATR gelecek fiyatı veya kesin kaybı tahmin etmez.';
+
   };
 })();
