@@ -172,9 +172,39 @@
   const originalReset=resetIndicators;
   resetIndicators=function(...args){originalReset(...args);reset();};
   let companyRequest=0;
+  if(typeof emptyChart==='function'){
+    const originalEmpty=emptyChart;
+    emptyChart=function(message){
+      originalEmpty(message);
+      ++companyRequest;
+      const status=document.getElementById('easyDataSource');
+      const host=status?.parentElement;
+      host?.querySelector('#easyRetryHistory')?.remove();
+      if(document.getElementById('chartMode')?.textContent!=='VERİ YOK'||message.endsWith('…'))return;
+      for(const id of ['easyPriceMovement','easyImportantLevels','easyChangeConditions','easyWhyInterest','easyRisks']){
+        put(id,'Grafik verisi kullanılamıyor.');
+      }
+      put('easyCompany','Bu seçim için doğrulanmış şirket bilgisi yüklenmedi.');
+      put('easyDataSource',message);
+      if(!host||typeof loadHistory!=='function')return;
+      const retry=document.createElement('button');
+      retry.id='easyRetryHistory';retry.type='button';retry.textContent='Tekrar dene';
+      retry.addEventListener('click',async()=>{
+        retry.disabled=true;
+        put('easyDataSource','Veri yeniden isteniyor…');
+        try{await loadHistory();}
+        catch{if(retry.isConnected)put('easyDataSource','Veri isteği tamamlanamadı.');}
+        finally{retry.disabled=false;}
+      });
+      status.after(retry);
+    };
+  }
   const originalShow=showChart;
   showChart=function(payload,options={}){
     originalShow(payload,options);reset();
+    document.getElementById('easyRetryHistory')?.remove();
+    ++companyRequest;
+    put('easyCompany','Doğrulanmış şirket bilgisi bekleniyor.');
     let closed;try{closed=closedCandles(payload);}catch{return;}
     const e=extended(closed),levels=ladder(closed,closed.at(-1)?.close);
     put('indStoch',format(e.stochastic14));put('indCci',format(e.cci20));put('indAdx',format(e.adx14));put('indMomentum',format(e.momentum10Pct)+(e.momentum10Pct==null?'':'%'));
