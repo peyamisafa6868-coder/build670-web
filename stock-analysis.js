@@ -133,7 +133,7 @@
   function reset(){
     clearEvidenceGraphics();
     ['indStoch','indCci','indAdx','indMomentum'].forEach(id=>put(id,'—'));
-    ['easyPriceMovement','easyImportantLevels','easyChangeConditions','easyWhyInterest','stockPivotSupports','stockPivotResistances'].forEach(id=>put(id,'Doğrulanmış bilgi bekleniyor.'));
+    ['easyPriceMovement','easyImportantLevels','easyChangeConditions','easyWhyInterest','easyRisks','stockPivotSupports','stockPivotResistances'].forEach(id=>put(id,'Doğrulanmış bilgi bekleniyor.'));
     put('easyDataSource','Veri bekleniyor. Teyitsiz fiyat veya yön yorumu gösterilmez.');
   }
   const originalReset=resetIndicators;
@@ -159,12 +159,14 @@
     evidenceGraphic('easyImportantLevels',last20.map(b=>b.close));
     evidenceGraphic('easyChangeConditions',last20.map(b=>b.close));
     evidenceGraphic('easyWhyInterest',[...verified.slice(-21,-1).map(b=>b.volume),verified.at(-1)?.volume],'bars');
+    evidenceGraphic('easyRisks',verified.slice(-20).map(b=>b.high-b.low),'bars');
     const previous=verified.at(-2)?.close,nowPrice=verified.at(-1)?.close;
     const pct=Number.isFinite(previous)&&previous>0?100*(nowPrice/previous-1):null;
     const text=analysis.direction==='RISING'?'fiyat, kısa ve orta vadeli fiyat ortalamalarının üstünde. Bu durum incelenen mumlarda yukarı yönün daha belirgin olduğunu gösterir; sonraki fiyatı garanti etmez.':analysis.direction==='FALLING'?'fiyat, kısa ve orta vadeli fiyat ortalamalarının altında. Bu durum incelenen mumlarda satış yönünün daha baskın olduğunu gösterir; düşüşün süreceği kesin değildir.':'fiyat ve kısa vadeli ortalamalar aynı yönde değil. Bu yüzden net bir yükseliş veya düşüş demek için yeterli uyum yok.';
     put('easyPriceMovement',`Son kapanış ${format(nowPrice)} TL${pct==null?'':', önceki kapanışa göre '+(pct>=0?'+':'')+format(pct)+'%'}. Seçilen ${analysis.period} grafiğinde ${text}`);
     put('easyImportantLevels',`Son kapanış ${format(nowPrice)} TL; destek ${format(analysis.support)} TL (${format((nowPrice/analysis.support-1)*100)}% aşağıda), direnç ${format(analysis.resistance)} TL (${format((analysis.resistance/nowPrice-1)*100)}% yukarıda). Bunlar önceki 20 mumdan hesaplanan izleme seviyeleridir; kesin alım veya satım noktası değildir.`);
     put('easyChangeConditions',`Sonraki doğrulanmış kapanışlar ${format(analysis.resistance)} üstüne çıkar ve işlem hacmi de artarsa yukarı yön güçlenebilir. ${format(analysis.support)} altına inerlerse görünüm zayıflayabilir. İki seviye arasında kalırsa yön hâlâ belirsiz olabilir.`);
+    put('easyRisks',`ATR(14) son kapanışa göre %${format(analysis.atrPercent)}. Grafik son 20 kapanmış mumun yüksek-düşük fiyat aralığını gösterir; ATR ise önceki kapanışa göre fiyat boşluklarını da hesaba katar. Bu değer gelecek fiyatı veya kesin kaybı tahmin etmez. Veri kaynağı: ${payload.source||'KULLANICI DOSYASI'}. İncelenen kapanış: ${new Date(analysis.sampleTime).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'})}.`);
     put('easyWhyInterest',`RSI(14) ${format(analysis.rsi)} · Son hacim ${format(last20.at(-1)?.volume)} · Önceki 20 mum ortalamasına oran ${format(analysis.volumeRatio)} kat · ATR(14) %${format(analysis.atrPercent)}. Bunlar geçmiş mumları açıklar; alım gerekçesi veya hedef fiyat değildir.`);
     put('easyDataSource',document.getElementById('easyDataSource').textContent+` İncelenen mum: ${new Date(analysis.sampleTime).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'})}.`);
   };
