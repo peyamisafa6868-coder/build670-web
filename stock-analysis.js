@@ -171,6 +171,7 @@
   }
   const originalReset=resetIndicators;
   resetIndicators=function(...args){originalReset(...args);reset();};
+  let companyRequest=0;
   const originalShow=showChart;
   showChart=function(payload,options={}){
     originalShow(payload,options);reset();
@@ -186,6 +187,18 @@
     const source=payload.source||'KULLANICI DOSYASI',period=labels[interval]||interval;
     const time=last?new Date(last.timestamp).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'}):'bilinmiyor';
     put('easyDataSource',symbol+' · '+period+' · Kaynak: '+source+' · Son doğrulanmış mum: '+time+' (TSİ). Yatırım tavsiyesi değildir.');
+    const requestId=++companyRequest;
+    if(typeof fetch==='function'&&/^[A-Z0-9]{3,10}$/.test(symbol)){
+      fetch('/api/company?'+new URLSearchParams({symbol,kind:'company'}),{credentials:'same-origin'})
+        .then(r=>{if(!r.ok)throw Error('KAP dizini erişilemedi ('+r.status+')');return r.json();})
+        .then(record=>{
+          if(requestId!==companyRequest||record.symbol!==symbol)return;
+          const url=record.links?.summary;
+          if(!record.companyName||!/^https:\/\/(?:www\.)?kap\.org\.tr\/tr\/sirket-bilgileri\/ozet\/[a-z0-9-]+$/.test(url||''))return;
+          evidenceStatus('easyCompany',[['Şirket',record.companyName],['Kaynak','KAP şirket dizini']]);
+          put('easyCompany',record.companyName+'. Resmî KAP şirket kaydı: '+url+'. Faaliyet alanı ve gelir dağılımı için dönemli faaliyet raporu henüz doğrulanmadı; tahmin yapılmaz.');
+        }).catch(()=>{if(requestId===companyRequest)put('easyCompany','Resmî KAP şirket dizini şu anda doğrulanamadı. Faaliyet alanı veya gelir dağılımı tahmin edilmez.');});
+    }
     const company=payload.companyProfile;
     const verifiedCompany=company&&company.symbol===symbol&&/^https:\/\/(?:www\.)?kap\.org\.tr\//.test(company.sourceUrl||'')&&company.companyName&&company.activity;
     if(verifiedCompany){
