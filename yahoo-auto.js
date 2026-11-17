@@ -145,7 +145,11 @@
       await loadHistory();
       if (result.some(x=>x.status==='rejected'))
         status('Bazı semboller yüklenemedi: '+result.filter(x=>x.status==='rejected').map(x=>x.reason.message).join(' | '));
-    } catch (e) { feedback('ASELS/THYAO','15m','Yahoo verisi alınamadı: '+(e?.message||e)); }
+    } catch (e) {
+      const message='Yahoo verisi alınamadı: '+(e?.message||e);
+      feedback('ASELS/THYAO','15m',message);
+      if(!state.candlePayload&&!state.demo)emptyChart(message);
+    }
     finally {button.disabled=false;}
   }, {capture:true});
   window.BistYahooAuto = Object.freeze({fetch:loadYahoo});
