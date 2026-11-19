@@ -293,7 +293,7 @@
     const panel=document.getElementById('stockExplanationPanel');
     if(!panel||state.demo||typeof loadHistory!=='function')return false;
     if(typeof location!=='undefined'&&/^#(?:stock_detail|technical_analysis|fullscreen)(?:[?]|$)/.test(location.hash))return false;
-    const market=state.market,symbol=String(document.getElementById('symbolInput')?.value||state.symbol||'').trim().toUpperCase();
+    const market=state.market,symbol=String(state.symbol||document.getElementById('symbolInput')?.value||'').trim().toUpperCase();
     const interval=state.interval||'15m',key=market+'|'+symbol+'|'+interval;
     if(market!=='BIST'||!/^[A-Z0-9]{3,10}$/.test(symbol)){
       globalThis.Build670SixCards.unavailable('Seçili BIST hisse kodu geçersiz veya desteklenmiyor.');
