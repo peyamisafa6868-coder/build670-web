@@ -169,13 +169,15 @@
     ['easyPriceMovement','easyImportantLevels','easyChangeConditions','easyWhyInterest','easyRisks','stockPivotSupports','stockPivotResistances'].forEach(id=>put(id,'Doğrulanmış bilgi bekleniyor.'));
     put('easyDataSource','Veri bekleniyor. Teyitsiz fiyat veya yön yorumu gösterilmez.');
   }
+  const nativeRouteActive=()=>typeof location!=='undefined'&&/^#(?:stock_detail|technical_analysis|fullscreen)(?:[?]|$)/.test(location.hash);
   const originalReset=resetIndicators;
-  resetIndicators=function(...args){originalReset(...args);reset();};
+  resetIndicators=function(...args){originalReset(...args);if(!nativeRouteActive())reset();};
   let companyRequest=0;
   if(typeof emptyChart==='function'){
     const originalEmpty=emptyChart;
     emptyChart=function(message){
       originalEmpty(message);
+      if(nativeRouteActive())return;
       ++companyRequest;
       const status=document.getElementById('easyDataSource');
       const host=status?.parentElement;
@@ -204,7 +206,10 @@
     // The native stock chart is already rendered by AndroidPriceChart. Reuse
     // its validated OHLCV only for these six explanation cards, without
     // rendering the legacy chart or changing any scoring/strategy gates.
-    if(options.sourceScreen!=='NATIVE_CHART')originalShow(payload,options);
+    if(options.sourceScreen!=='NATIVE_CHART'){
+      originalShow(payload,options);
+      if(nativeRouteActive())return; // a legacy request must not overwrite native evidence
+    }
     reset();
     document.getElementById('easyRetryHistory')?.remove();
     ++companyRequest;
@@ -292,7 +297,7 @@
   async function ensureSelected(force=false){
     const panel=document.getElementById('stockExplanationPanel');
     if(!panel||state.demo||typeof loadHistory!=='function')return false;
-    if(typeof location!=='undefined'&&/^#(?:stock_detail|technical_analysis|fullscreen)(?:[?]|$)/.test(location.hash))return false;
+    if(nativeRouteActive())return false;
     const market=state.market,symbol=String(state.symbol||document.getElementById('symbolInput')?.value||'').trim().toUpperCase();
     const interval=state.interval||'15m',key=market+'|'+symbol+'|'+interval;
     if(market!=='BIST'||!/^[A-Z0-9]{3,10}$/.test(symbol)){
