@@ -20,11 +20,13 @@ const check=(label,ok)=>{assert.ok(ok,label);report.checks.push(label);};
  await page.evaluate(async real=>{window.__chartFixture=real?await BistYahooAuto.fetch('THYAO','1d'):{symbol:'THYAO',interval:'1d',lastBarClosed:true,source:'EXPLICIT TEST FIXTURE',candles:diagFixtureBars(260).map(x=>({...x,closed:true}))};window.__pendingChart={};window.BistYahooAuto=Object.freeze({fetch:(symbol,interval)=>new Promise((resolve,reject)=>{__pendingChart[interval]={resolve,reject};})});},process.env.TEST_REAL_PROVIDER==='1');
  await page.locator('#apk-quick5m').click();await page.waitForFunction(()=>__pendingChart['5m']);await page.locator('#apk-quick10m').click();await page.waitForFunction(()=>__pendingChart['10m']);
  await page.evaluate(()=>__pendingChart['10m'].resolve({...__chartFixture,interval:'10m',requestTag:'10m'}));await page.waitForFunction(()=>AndroidPriceChart.getState(document.getElementById('apk-chart'))?.data.requestTag==='10m');
- check('Native stock chart supplies the six legacy evidence cards',await page.evaluate(()=>{
+ check('Native stock chart supplies its six actual apk- evidence cards',await page.evaluate(()=>{
    const ids=['easyPriceMovement','easyImportantLevels','easyChangeConditions','easyCompany','easyWhyInterest','easyRisks'];
-   const labels=ids.map(id=>document.getElementById(id)?.textContent||'');
+   const labels=ids.map(id=>document.getElementById('apk-'+id)?.textContent||'');
    return labels.every(s=>s&&!s.includes('Doğrulanmış bilgi bekleniyor')) &&
-     labels[0].includes('Son 10 dk kapanışı') && labels[5].includes('ATR(14)');
+     labels[0].includes('Son 10 dk kapanışı') && labels[5].includes('ATR(14)') &&
+     document.getElementById('apk-easyPriceMovement')?.parentElement?.querySelector('.build670-native-evidence-visual')!==null &&
+     document.getElementById('apk-easyDataSource')?.textContent.includes('THYAO');
  }));
  await page.evaluate(()=>__pendingChart['5m'].resolve({...__chartFixture,interval:'5m',requestTag:'5m'}));await page.waitForTimeout(500);
  check('A late older response cannot replace the latest period request',await page.evaluate(()=>AndroidPriceChart.getState(document.getElementById('apk-chart'))?.data.requestTag==='10m'));
@@ -32,8 +34,9 @@ const check=(label,ok)=>{assert.ok(ok,label);report.checks.push(label);};
  check('Starting a new request discards the previous canvas and chart state',await page.evaluate(()=>!AndroidPriceChart.getState(document.getElementById('apk-chart'))&&document.querySelectorAll('#apk-chart canvas').length===0));
  await page.evaluate(()=>__pendingChart['60m'].reject(Error('INJECTED_PROVIDER_FAILURE')));await page.waitForFunction(()=>document.getElementById('apk-chartUnavailableReason').textContent.includes('INJECTED_PROVIDER_FAILURE'));
  check('Native provider failure explains the unavailable six cards',await page.evaluate(()=>
-   document.getElementById('easyPriceMovement')?.textContent.includes('Grafik verisi kullanılamıyor') &&
-   document.getElementById('easyDataSource')?.textContent.includes('INJECTED_PROVIDER_FAILURE')
+   document.getElementById('apk-easyPriceMovement')?.textContent.includes('Grafik verisi kullanılamıyor') &&
+   document.getElementById('apk-easyDataSource')?.textContent.includes('INJECTED_PROVIDER_FAILURE') &&
+   !document.getElementById('apk-easyPriceMovement')?.parentElement?.querySelector('.build670-native-evidence-visual')
  ));
  await page.locator('#apk-chartUnavailableReason').scrollIntoViewIfNeeded();
  report.overlay=await page.evaluate(()=>{const panel=document.getElementById('apk-chartUnavailablePanel'),frame=document.getElementById('apk-chartFrame'),reason=document.getElementById('apk-chartUnavailableReason'),p=panel.getBoundingClientRect(),f=frame.getBoundingClientRect(),r=reason.getBoundingClientRect(),hit=document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2);return {panel:{x:p.x,y:p.y,width:p.width,height:p.height},frame:{x:f.x,y:f.y,width:f.width,height:f.height},reasonOnTop:hit===reason||reason.contains(hit),support:document.getElementById('apk-graphSupport').textContent,resistance:document.getElementById('apk-graphResistance').textContent};});
@@ -45,8 +48,8 @@ const check=(label,ok)=>{assert.ok(ok,label);report.checks.push(label);};
  await page.locator('#apk-quick1d').click();await page.waitForFunction(()=>__pendingChart['1d']);await page.evaluate(()=>__pendingChart['1d'].resolve({...__chartFixture,requestTag:'retry'}));await page.waitForFunction(()=>AndroidPriceChart.getState(document.getElementById('apk-chart'))?.model,null,{timeout:45000});
  check('A later successful request restores the chart and hides the error',await page.evaluate(()=>document.querySelectorAll('#apk-chart canvas:not(.chart-focus-cursor)').length===1&&document.getElementById('apk-chartUnavailablePanel').hidden));
  check('Recovered native chart repopulates real evidence fields',await page.evaluate(()=>
-   document.getElementById('easyPriceMovement')?.textContent.includes('Son 1 gün kapanışı') &&
-   document.getElementById('easyDataSource')?.textContent.includes('THYAO')
+   document.getElementById('apk-easyPriceMovement')?.textContent.includes('Son 1 gün kapanışı') &&
+   document.getElementById('apk-easyDataSource')?.textContent.includes('THYAO')
  ));
  report.csp=await page.evaluate(()=>__csp);assert.deepEqual(report.errors,[]);assert.deepEqual(report.csp,[]);report.status='passed';
 })().catch(async e=>{report.status='failed';report.failure=e.stack;process.exitCode=1;if(page)await page.screenshot({path:path.join(out,'failure.png')}).catch(()=>{});}).finally(async()=>{fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));if(env)await env.close();});
