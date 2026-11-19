@@ -245,7 +245,8 @@
           if(!record.companyName||!/^https:\/\/(?:www\.)?kap\.org\.tr\/tr\/sirket-bilgileri\/ozet\/[a-z0-9-]+$/.test(url||''))return;
           evidenceStatus('easyCompany',[['Şirket',record.companyName],['Kaynak','KAP şirket dizini']]);
           put('easyCompany',record.companyName+'. Resmî KAP şirket kaydı: '+url+'. Faaliyet alanı ve gelir dağılımı için dönemli faaliyet raporu henüz doğrulanmadı; tahmin yapılmaz.');
-        }).catch(()=>{if(requestId===companyRequest)put('easyCompany','Resmî KAP şirket dizini şu anda doğrulanamadı. Faaliyet alanı veya gelir dağılımı tahmin edilmez.');});
+          if(nativeRouteActive())syncNativeEvidence();
+        }).catch(()=>{if(requestId===companyRequest){put('easyCompany','Resmî KAP şirket dizini şu anda doğrulanamadı. Faaliyet alanı veya gelir dağılımı tahmin edilmez.');if(nativeRouteActive())syncNativeEvidence();}});
     }
     const company=payload.companyProfile;
     const verifiedCompany=company&&company.symbol===symbol&&/^https:\/\/(?:www\.)?kap\.org\.tr\//.test(company.sourceUrl||'')&&company.companyName&&company.activity;
@@ -290,6 +291,37 @@
   // confirmed candle payload. An unavailable provider is shown as an error,
   // not six indefinitely pending analyses.
   const evidenceRenderer=showChart;
+  // XML include_stock_easy_explanation renders *different* elements under
+  // #androidApp with IDs apk-easy*. Updating legacy #easy* is insufficient.
+  // Copy the same verified evidence and visuals into the actual visible native
+  // cards; never source a price from a scan aggregate or synthetic fixture.
+  function syncNativeEvidence(){
+    const ids=['easyPriceMovement','easyImportantLevels','easyChangeConditions','easyCompany','easyWhyInterest','easyRisks','easyDataSource'];
+    let synced=0;
+    for(const id of ids){
+      const from=document.getElementById(id);
+      const to=document.getElementById('apk-'+id);
+      if(!from||!to)continue;
+      if(typeof window!=='undefined'&&window.AndroidLayout?.setText)
+        window.AndroidLayout.setText(to,from.textContent);
+      else to.textContent=from.textContent;
+      synced++;
+      if(id==='easyDataSource')continue;
+      const target=to.parentElement;
+      if(!target)continue;
+      target.querySelectorAll('.build670-native-evidence-visual').forEach(n=>n.remove());
+      const section=from.closest('section');
+      if(!section)continue;
+      for(const graphic of section.querySelectorAll('.build670-evidence-visual')){
+        const copy=graphic.cloneNode(true);
+        copy.classList.remove('build670-evidence-visual');
+        copy.classList.add('build670-native-evidence-visual');
+        copy.style.maxWidth='100%';
+        target.append(copy);
+      }
+    }
+    return synced;
+  }
   // A completed market-wide scan does not hydrate the selected chart's OHLCV.
   // Load only the explicitly selected BIST symbol when the explanation panel
   // becomes visible; keep failures truthful and avoid background mass fetches.
@@ -349,6 +381,7 @@
     renderNative(payload){
       if(!payload||typeof payload.symbol!=='string'||typeof payload.interval!=='string'||!Array.isArray(payload.candles))return false;
       evidenceRenderer(payload,{sourceScreen:'NATIVE_CHART'});
+      syncNativeEvidence();
       return true;
     },
     unavailable(reason){
@@ -359,6 +392,7 @@
         put(id,'Grafik verisi kullanılamıyor.');
       put('easyCompany','Bu seçim için doğrulanmış şirket bilgisi yüklenmedi.');
       put('easyDataSource','Seçilen hisse için doğrulanmış geçmiş alınamadı: '+String(reason||'Veri kaynağı kullanılamıyor.'));
+      syncNativeEvidence();
     }
   });
   // A visible, user-controlled recovery path is essential when a provider
