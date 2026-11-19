@@ -964,7 +964,12 @@
         if(request!==version||token!==loadNumber)return;
         if(data?.symbol!==symbol||data?.interval!==interval)throw Error('Sembol/periyot yanıtı seçili grafikle eşleşmedi.');
         chartData=data;paintStock(data);
-      }catch(e){if(request!==version||token!==loadNumber)return;show('chartUnavailablePanel');text('chartUnavailableReason',e.message);text('chartStatus','Veri alınamadı');text('plainExplanation','Seçilen periyotta veri alınamadı.');
+        // Feed the visible six evidence cards from the selected native chart.
+        // Never use an unrelated scan row or synthetic market signal.
+        window.Build670SixCards?.renderNative(data);
+      }catch(e){if(request!==version||token!==loadNumber)return;
+        window.Build670SixCards?.unavailable(e?.message||'Veri kaynağı kullanılamıyor.');
+        show('chartUnavailablePanel');text('chartUnavailableReason',e.message);text('chartStatus','Veri alınamadı');text('plainExplanation','Seçilen periyotta veri alınamadı.');
         for(const [id,label] of [['expRsi','RSI'],['expMacd','MACD'],['expStochastic','Stokastik'],['expCci','CCI'],['expAdx','ADX'],['expMomentum','Momentum']])text(id,label+' — Veri alınamadı');
         text('expLevelSource','Destek/direnç hesaplanamadı: '+e.message);
       }
