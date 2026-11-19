@@ -36,3 +36,17 @@ assert.match(elements.easyCompany.textContent,/yüklenmedi/);
 context.showChart({symbol:'TEST',interval:'5m',source:'TEST PROVIDER',candles});
 assert.match(elements.easyPriceMovement.textContent,/Son 5 dk kapanışı/);
 console.log('PASS failed chart request reports error and cards recover on success');
+
+// Native-route integration: no legacy chart painting, but every evidence tile
+// must leave the pending state for a selected, validated OHLCV series.
+assert.equal(typeof context.Build670SixCards?.renderNative,'function');
+assert.equal(context.Build670SixCards.renderNative({symbol:'TEST',interval:'5m',source:'TEST PROVIDER',candles}),true);
+assert.match(elements.easyPriceMovement.textContent,/Son 5 dk kapanışı/);
+assert.match(elements.easyWhyInterest.textContent,/önceki 20 mum ortalaması/);
+assert.match(elements.easyRisks.textContent,/ATR\\(14\\)/);
+context.Build670SixCards.unavailable('Geçmiş veri alınamadı');
+assert.match(elements.easyPriceMovement.textContent,/Grafik verisi kullanılamıyor/);
+assert.match(elements.easyCompany.textContent,/yüklenmedi/);
+assert.match(elements.easyDataSource.textContent,/Geçmiş veri alınamadı/);
+assert.match(fs.readFileSync(path.join(__dirname,'../android-app.js'),'utf8'),/Build670SixCards\\?\\.renderNative\\(data\\)/);
+console.log('PASS native chart data bridges six cards and missing provider explains unavailable');
