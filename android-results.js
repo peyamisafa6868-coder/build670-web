@@ -30,5 +30,46 @@
     }else result.sort((a,b)=>Number(b.rankingStatus==='CALCULATED')-Number(a.rankingStatus==='CALCULATED')||finite(b.rankingScore)-finite(a.rankingScore)||finite(b.finalSignalScore)-finite(a.finalSignalScore)||finite(b.dataConfidenceScore)-finite(a.dataConfidenceScore)||finite(a.riskScore)-finite(b.riskScore)||a.symbol.localeCompare(b.symbol,'en'));
     return result;
   }
-  return {apply,sorts,trendGlow};
+  // Home trend comes only from the Kotlin TrendUiPolicy output. Signal validity
+  // and ranking score are deliberately not used to infer market direction.
+  function trendCategory(row){
+    const state=row?.trendDisplay?.trend?.state;
+    if(['BULLISH','STRONG_BULLISH'].includes(state))return 'UP';
+    if(['BEARISH','STRONG_BEARISH'].includes(state))return 'DOWN';
+    if(state==='NEUTRAL')return 'FLAT';
+    if(['CONFLICTING','MIXED'].includes(state))return 'MIXED';
+    return 'UNKNOWN';
+  }
+  function signalCategory(row,attestationVerified=false){
+    if(row?.signalValidity==='INSUFFICIENT')return 'INSUFFICIENT';
+    if(row?.signalValidity==='ERROR')return 'ERROR';
+    const verified=attestationVerified&&row?.signalValidity==='VALID'&&row?.trendDisplay?.verifiedSignal===true;
+    if(verified&&row.direction==='LONG')return 'BUY';
+    if(verified&&row.direction==='SHORT')return 'SELL';
+    if(row?.signalValidity==='WATCH')return 'WATCH';
+    return 'NONE';
+  }
+  function homeSelect(rows,{trend='ALL',signal='ALL',attestationVerified=false}={}){
+    return rows.filter(row=>(trend==='ALL'||trendCategory(row)===trend)
+      &&(signal==='ALL'||(signal==='VERIFIED'?['BUY','SELL'].includes(signalCategory(row,attestationVerified)):signalCategory(row,attestationVerified)===signal)));
+  }
+  const trendNames={UP:'Yükseliş',DOWN:'Düşüş',FLAT:'Yatay',MIXED:'Çelişkili',UNKNOWN:'Belirsiz'};
+  const signalNames={WATCH:'İzleniyor',NONE:'Sinyal yok',INSUFFICIENT:'Yetersiz veri',ERROR:'İşlem hatası',BUY:'Onaylı AL',SELL:'Onaylı SAT'};
+  function scanStatusLabel(job){
+    if(!job)return 'Tarama yapılmadı';
+    if(job.status==='CANCELLED')return 'İptal edildi';
+    if(job.status==='FAILED'||job.status==='INTERRUPTED')return 'Tarama başarısız';
+    if(job.status==='COMPLETED_WITH_ERRORS')return 'Hatalarla tamamlandı';
+    if(job.status==='COMPLETE')return job.insufficient>0?'Eksik veriyle tamamlandı':'Tamamlandı';
+    if(job.status==='CANCELLING')return 'İptal ediliyor';
+    return ['QUEUED','RUNNING'].includes(job.status)?'Tarama sürüyor':'Tarama durumu bilinmiyor';
+  }
+  function scanProgress(job){
+    const total=Number.isInteger(job?.total)&&job.total>0?job.total:0;
+    const processed=total?Math.min(total,Math.max(0,job.processed||0)):0;
+    const completed=total>0&&processed===total;
+    return {total,processed,pending:total-processed,
+      percentage:total?Math.min(completed?100:99.9,processed/total*100):0};
+  }
+  return {apply,sorts,trendGlow,trendCategory,signalCategory,homeSelect,trendNames,signalNames,scanStatusLabel,scanProgress};
 });

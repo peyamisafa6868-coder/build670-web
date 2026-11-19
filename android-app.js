@@ -8,6 +8,7 @@
   let screen='main',params={},version=0,settings,universe,market,lastRows=[],lastJob=null,filter='ALL',page=1,chartData=null,autoTimer=null;
   let historyCleanup=null,technicalCleanup=null,marketError=null,marketCheckedAt=0;
   let resultUi={},pendingResultJobId=null;
+  let homeTrendFilter='ALL',homeSignalFilter='ALL',homeSourceId=null,homeCache=[],homeStamp='',homeLoading=false,homeLoadError=null,homeTicket=0,homeObservers=[];
   const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
   let preferenceRecovery=null;
   function loadPreferences(){
@@ -69,7 +70,7 @@
   function toolbar(parent,title,back=true){if(back)parent.append(action('‹ Geri',()=>goBack()));note(parent,title).style.cssText='font-size:24px;font-weight:700;color:inherit;padding:10px 0';}
   let routeDepth=0;
   function goBack(){if(routeDepth>0)history.back();else render('main');}
-  function routeParams(p){return Object.fromEntries(Object.entries({symbol:p.symbol,key:p.key,mode:p.mode,interval:p.interval||p.data?.interval}).filter(([,v])=>typeof v==='string'));}
+  function routeParams(p){return Object.fromEntries(Object.entries({symbol:p.symbol,key:p.key,mode:p.mode,interval:p.interval||p.data?.interval,jobId:p.jobId,trendFilter:p.trendFilter,signalFilter:p.signalFilter}).filter(([,v])=>typeof v==='string'));}
   function recordRoute(name,p,replace=false){const publicParams=routeParams(p),query=new URLSearchParams(publicParams).toString();if(!replace)routeDepth++;history[replace?'replaceState':'pushState']({apkRoute:true,screen:name,params:publicParams,depth:routeDepth},'',location.pathname+location.search+'#'+name+(query?'?'+query:''));}
   function navigateTo(name,p={}){
     if(name===screen&&JSON.stringify(p)===JSON.stringify(params))return;
@@ -109,16 +110,17 @@
     return {main:home,bist_scan:scanner,scan_results:resultsScreen,opportunity:resultsScreen,stocks,favorites,settings:settingsScreen,settings_search:settingsSearch,settings_detail:settingsDetail,stock_detail:stockDetail,technical_analysis:technical,news:newsScreen,notifications,signal_history:historyScreen,viop,viop_contracts:contracts,viop_analysis:viopAnalysis,viop_detail:viopDetail,market_instrument_detail:instrumentDetail,info_screen:info}[screen]?.();
   }
   async function home(){
-    for(const [id,target] of [['actionBist','bist_scan'],['actionOpportunity','opportunity'],['actionSignal','signal_history'],['actionViop','viop'],['actionWatchlist','favorites'],['actionNotifications','notifications'],['actionCheapStock','cheap'],['btnSeeAllOpportunities','opportunity'],['btnMarketDetails','settings']])bind(id,()=>navigateTo(target));
+    for(const [id,target] of [['actionBist','bist_scan'],['actionOpportunity','opportunity'],['actionSignal','signal_history'],['actionViop','viop'],['actionWatchlist','favorites'],['actionNotifications','notifications'],['actionCheapStock','cheap'],['btnMarketDetails','settings']])bind(id,()=>navigateTo(target));
+    bind('btnSeeAllOpportunities',()=>navigateTo('opportunity',{jobId:BistTerminal.job?.id||'',trendFilter:homeTrendFilter,signalFilter:homeSignalFilter}));
     bind('btnHeaderSettings',()=>navigateTo('settings'));
     text('txtVersionBadge','V6.3.45');
     text('txtHeaderDateTime',new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date()).replace(/(\d{4})\s+(\d\d:\d\d)/,'$1 • $2'));
     text('txtMarketSummary',reference?'Veri alınmadı • veri zamanı yok • gecikme sonucu ilgili ekranda doğrulanır':'Kaynak: '+(settings.delayed?'Yahoo Finance • YEDEK / GECİKMELİ':'Production Backend')+'\nCanlı AL/SAT doğrulanmadı');
     show('todayHorizontal',false);
     for(const [id,key] of [['marketBist100Card','XU100'],['marketBist30Card','XU030'],['marketUsdCard','USDTRY'],['marketGoldCard','XAUUSD'],['marketViopCard','VIOP30']])bind(id,()=>key==='VIOP30'?navigateTo('viop'):navigateTo('market_instrument_detail',{key}));
-    for(const [id,mode] of [['todayAllTab','ALL'],['todayLongTab','LONG'],['todayShortTab','SHORT']])bind(id,()=>{filter=mode;homeRows();});
+    for(const [id,mode] of [['todayAllTab','ALL'],['todayLongTab','UP'],['todayShortTab','DOWN']])bind(id,()=>{homeTrendFilter=mode;homeSignalFilter='ALL';homeRows();});
     if(!reference){marketControls();if(!market||Date.now()-marketCheckedAt>=300000)await refreshMarket();}
-    marketTiles();homeRows();
+    marketTiles();homeRows();safe(refreshHomeRows)();
   }
   async function refreshMarket(){
     try{market=await api('/api/instruments');marketError=null;marketCheckedAt=Date.now();}
@@ -150,13 +152,155 @@
     if(marketError)diagnostics.unshift('Yenileme başarısız: '+marketError+' • Varsa önceki gözlemler korunuyor.');
     const detail=document.getElementById('apk-market-diagnostics');if(detail){detail.replaceChildren(...diagnostics.map(x=>el('p','',x)));}
   }
+  // The dashboard never starts a scan. It reads the SAME authenticated job used
+  // by scan_results, orders the complete retrieved set, then limits display to 8.
+  async function refreshHomeRows(){
+    const job=BistTerminal.job;
+    if(screen!=='main'||!job?.id||homeLoading)return;
+    const stamp=job.id+':'+job.status+':'+job.processed;
+    if(homeSourceId===job.id&&homeStamp===stamp)return;
+    const request=version,ticket=++homeTicket;homeLoading=true;
+    const current=()=>screen==='main'&&version===request&&homeTicket===ticket&&BistTerminal.job?.id===job.id;
+    try{
+      const all=[];let expected=0;
+      for(let pg=1;pg<=20;pg++){
+        const payload=await api('/api/scans/'+job.id+'/results?'+new URLSearchParams({filter:'ALL',page:pg,size:100}));
+        if(!current())return;
+        if(!Array.isArray(payload?.results)||!Number.isInteger(payload.total)||payload.total<0||payload.total>2000)
+          throw Error('Tarama sonuç listesi geçersiz.');
+        all.push(...payload.results);expected=payload.total;
+        if(all.length>=expected)break;
+        if(!payload.results.length)throw Error('Sunucu sayfalaması sonuç toplamıyla uyuşmuyor.');
+      }
+      if(all.length<expected)throw Error('Tüm sonuç sayfaları getirilemedi.');
+      if(!current())return;
+      homeCache=all;homeSourceId=job.id;homeStamp=stamp;homeLoadError=null;
+    }catch(error){
+      if(current())homeLoadError=String(error?.message||error);
+    }finally{homeLoading=false;if(current())homeRows();}
+  }
+  async function showHomeFailures(kind){
+    const job=BistTerminal.job;if(!job?.id)return message('Tarama başlatılmadı.');
+    try{
+      const records=[];
+      for(let pg=1;pg<=7;pg++){
+        const data=await api('/api/scans/'+job.id+'/failures?'+new URLSearchParams({page:pg,size:100}));
+        if(BistTerminal.job?.id!==job.id)return;
+        if(!Array.isArray(data.failures))throw Error('Hata ayrıntıları geçersiz.');
+        records.push(...data.failures);
+        if(records.length>=data.total)break;
+      }
+      const subset=records.filter(x=>kind==='INSUFFICIENT'
+        ?x.classification==='INSUFFICIENT_DATA'||x.code==='INSUFFICIENT_HISTORY'
+        :x.classification!=='INSUFFICIENT_DATA'&&x.code!=='INSUFFICIENT_HISTORY');
+      message(subset.length+' kayıt (iş: '+job.id+')\n'+(subset.map(x=>x.symbol+' • '+(x.closedBarCount!=null?x.closedBarCount+'/220 kapanmış mum • ':'')+(x.error||x.code)).join('\n')||'Ayrıntı kaydı yok.').slice(0,10000));
+    }catch(error){message('Tarama ayrıntıları alınamadı: '+error.message);}
+  }
   function homeRows(){
-    if(screen!=='main')return;const list=$('todayOpportunityRows');if(!list)return;list.replaceChildren();
-    const rows=lastRows.filter(x=>filter==='ALL'||x.signalValidity==='VALID'&&x.direction===filter);
+    if(screen!=='main')return;
+    const list=$('todayOpportunityRows'),viewport=$('todayHorizontal');if(!list)return;
+    for(const observer of homeObservers)observer.disconnect();homeObservers=[];
+    list.replaceChildren();list.style.width='100%';list.style.minWidth='0';
+    const job=BistTerminal.job;
+    const all=job?.id===homeSourceId?homeCache:[]; // never sort an incomplete result-page cache
+    const delayed=job?.signalAttestationVerified!==true;
+    const selected=AndroidResults.homeSelect(all,{trend:homeTrendFilter,signal:homeSignalFilter,attestationVerified:!delayed});
+    const rows=[...selected].sort((a,b)=>(Number(b.dataTimestamp)||0)-(Number(a.dataTimestamp)||0)||a.symbol.localeCompare(b.symbol,'tr'));
+    const host=viewport?.parentElement||list.parentElement;
+    let dashboard=app.querySelector('[data-home-dashboard]');
+    if(!dashboard){dashboard=el('section','apk-today-dashboard');dashboard.dataset.homeDashboard='true';host.insertBefore(dashboard,viewport||list);}
+    dashboard.replaceChildren();
+    const meta=el('div','apk-today-meta');
+    const progress=AndroidResults.scanProgress(job);
+    const lastTime=all.reduce((latest,x)=>Math.max(latest,Number(x.candles?.at(-1)?.timestamp||x.dataTimestamp)||0),0);
+    meta.append(
+      el('strong','','Tarama: '+(job?.id||'Henüz başlatılmadı')+' • '+AndroidResults.scanStatusLabel(job)),
+      el('span','','Periyot: '+(job?.interval||settings.interval)+' • Sağlayıcı: '+(job?.provider||'Kaynak doğrulanmadı')),
+      el('span','','Son kapanmış mum (TR): '+date(lastTime)+' • İş bitişi (TR): '+date(job?.completedAt)),
+      ...(job?.benchmarkError?[el('span','','XU100 karşılaştırma verisi alınamadı: '+job.benchmarkError)]:[]),
+      el('span','',progress.processed+'/'+progress.total+' işlendi • %'+num(progress.percentage,1)+(homeLoading?' • Sonuçlar yükleniyor':'')+(homeLoadError?' • Yükleme hatası: '+homeLoadError:''))
+    );
+    if(delayed)meta.append(el('strong','apk-today-delayed','Gecikmeli analiz • Onaylı AL/SAT yok'));
+    dashboard.append(meta);
+    const badges=el('div','apk-today-counters');
+    for(const [label,value,callback] of [
+      ['Analiz üretildi',job?.successful||0,()=>navigateTo('scan_results',{jobId:job?.id})],
+      ['Yetersiz veri',job?.insufficient||0,()=>showHomeFailures('INSUFFICIENT')],
+      ['Hata',job?.errors||0,()=>showHomeFailures('ERROR')],
+      ['Bekliyor',progress.pending,()=>message('Henüz işlenmemiş '+progress.pending+' sembol var. Sunucu bekleyen sembol listesini bu API sürümünde paylaşmıyor.')]]){
+      const button=el('button','apk-today-counter',label+'  '+value);
+      button.type='button';button.addEventListener('click',safe(callback));badges.append(button);
+    }
+    dashboard.append(badges);
+    const options=el('div','apk-today-extra-filters');
+    const counts=(t,s)=>AndroidResults.homeSelect(all,{trend:t,signal:s,attestationVerified:!delayed}).length;
+    for(const [id,value,label] of [['todayAllTab','ALL','Tümü'],['todayLongTab','UP','Yükseliş'],['todayShortTab','DOWN','Düşüş']]){
+      const button=$(id);if(!button)continue;
+      text(id,label+' ('+counts(value,'ALL')+')');
+      const active=homeTrendFilter===value&&homeSignalFilter==='ALL';
+      button.dataset.todayActive=String(active);button.setAttribute('aria-pressed',String(active));
+      button.style.color=active?'#f3fdff':'#c2d7e5';
+      button.style.outline=active?'2px solid #40e0eb':'1px solid #285873';
+      button.style.background=active?'#116383':'#0b2b42';
+    }
+    const extra=(group,items,current,update)=>{
+      const container=el('div','apk-today-filter-row');
+      container.append(el('span','apk-today-filter-label',group));
+      for(const [value,label] of items){
+        const count=counts(group==='Trend'?value:'ALL',group==='Sinyal'?value:'ALL');
+        const button=el('button','apk-today-filter'+(current===value?' is-active':''),label+' ('+count+')');
+        button.type='button';button.dataset.homeFilter=group+'-'+value;button.setAttribute('aria-pressed',String(current===value));
+        button.addEventListener('click',()=>{update(value);homeRows();});container.append(button);
+      }
+      options.append(container);
+    };
+    extra('Trend',[['FLAT','Yatay'],['MIXED','Çelişkili'],['UNKNOWN','Belirsiz']],homeTrendFilter,value=>{homeTrendFilter=value;});
+    extra('Sinyal',[['ALL','Tümü'],['WATCH','İzleniyor'],['NONE','Sinyal yok'],['VERIFIED','Onaylı AL/SAT'],['INSUFFICIENT','Yetersiz veri']],homeSignalFilter,value=>{homeSignalFilter=value;});
+    dashboard.append(options);
+    const summary=el('div','apk-today-filter-summary',rows.length+' / '+all.length+' sonuç • Son kapanmış mum zamanına göre sıralandı • İlk 8 kayıt gösteriliyor');
+    summary.dataset.homeResultCount=String(rows.length);dashboard.append(summary);
     show('todayEmpty',!rows.length);show('todayHorizontal',!!rows.length);
-    if(!rows.length)text('todayEmpty','TARAMA SONUCU YOK • Tarama yapılmadı veya sonuçlar yüklenemedi; fırsat bulunamadı denemez.');
-    for(const [id,mode,color] of [['todayAllTab','ALL','#159ff0'],['todayLongTab','LONG','#00f080'],['todayShortTab','SHORT','#ff4545']])if($(id)){L.background($(id),filter===mode?'@drawable/bg_chip_selected_blue':'@drawable/bg_chip_outline');$(id).style.color=filter===mode?color:'#afc2d4';}
-    for(const x of rows.slice(0,8))row(list,x.symbol,x.signalValidity+' • '+x.score+'/100',()=>navigateTo('stock_detail',{symbol:x.symbol}));
+    if(!rows.length){
+      text('todayEmpty',!job?'Henüz tarama yapılmadı. BIST taramayı başlatın.'
+        :homeLoading?'Tarama sonuçları yükleniyor…'
+        :homeLoadError?'Sonuçlar alınamadı: '+homeLoadError
+        :all.length?'Bu trend/sinyal filtresine uygun kayıt yok. Gecikmeli WATCH kayıtları onaylı AL/SAT değildir.'
+        :job.insufficient>0?'Analiz üretilemedi; eksik mum kayıtlarını Yetersiz veri sayacından inceleyin.'
+        :'Henüz analiz sonucu yok. '+AndroidResults.scanStatusLabel(job)+'.');
+    }
+    if(viewport)viewport.style.width='100%';
+    for(const x of rows.slice(0,8)){
+      const category=AndroidResults.trendCategory(x),signal=AndroidResults.signalCategory(x,!delayed);
+      const trend=x.trendDisplay?.trend;
+      const evidence=category==='MIXED'?{red:228,green:183,blue:100,strengthLevel:0}:trend;
+      const price=BistNativeMarket.price(x),change=BistNativeMarket.change(x),valid=Number.isFinite(price)&&price>0;
+      const card=el('button','apk-today-card');card.type='button';
+      card.dataset.homeSymbol=x.symbol;card.dataset.homeTrend=category;card.dataset.homeSignal=signal;
+      const company=el('span','apk-today-company',x.companyName||x.symbol);
+      const identity=el('div','apk-today-identity');identity.append(el('strong','',x.symbol),company);
+      const priceBox=el('div','apk-today-price');
+      priceBox.append(el('strong','',valid?num(price)+' TL':'Fiyat verisi yok'),el('span','',Number.isFinite(change)?'Günlük değişim: '+(change>0?'+':'')+num(change)+'%':'Günlük değişim: veri yok'));
+      const spark=el('div','apk-today-spark');spark.dataset.homeSpark=x.symbol;
+      spark.setAttribute('role','img');spark.setAttribute('aria-label',x.symbol+' kapanış mini grafiği');
+      const candles=Array.isArray(x.candles)?x.candles.filter(b=>Number.isFinite(b?.close)&&b.close>0):[];
+      if(candles.length<2)spark.textContent='Grafik verisi yok';
+      const label=el('div','apk-today-trend',AndroidResults.trendNames[category]);
+      label.dataset.trend=category;
+      const signalBox=el('div','apk-today-signal',AndroidResults.signalNames[signal]);
+      const reason=el('div','apk-today-reason',(x.discovery?.reason||x.signalValidityReason||'Doğrulanmış tarama gerekçesi bulunmuyor.').slice(0,180));
+      const recent=el('small','',date(x.candles?.at(-1)?.timestamp||x.dataTimestamp)+' TR • '+(x.closedBarCount??'—')+' kapanmış mum');
+      reason.append(recent);
+      card.append(identity,priceBox,spark,label,signalBox,reason);
+      card.addEventListener('click',safe(()=>navigateTo('stock_detail',{symbol:x.symbol,opportunity:x,interval:job?.interval||settings.interval})));
+      list.append(card);
+      if(candles.length>=2){
+        const draw=()=>{if(!spark.isConnected||spark.clientWidth<1||spark.clientHeight<1)return;
+          BistNativeMarket.sparkline(spark,candles,evidence);
+          if(!spark.querySelector('canvas'))spark.textContent='Grafik verisi yok';};
+        requestAnimationFrame(draw);
+        if(typeof ResizeObserver!=='undefined'){const observer=new ResizeObserver(draw);observer.observe(spark);homeObservers.push(observer);}
+      }
+    }
   }
   function scanner(){
     bind('btnHowItWorks',()=>message('Ham OHLCV → teknik göstergeler → bileşen puanları → risk/güven → yayın kapıları. Gecikmeli veride AL/SAT üretilmez.'));
@@ -202,13 +346,14 @@
   }
   function jobStatus(){
     const job=BistTerminal.job;if(!job)return;
-    text('txtProgress',job.processed+'/'+job.total+' • %'+Math.floor(job.processed/job.total*100));
-    text('txtStatus',job.status);text('txtScanHeroSubtitle','Başarılı: '+job.successful+' • Yetersiz: '+job.insufficient+' • Hata: '+job.errors);
+    const progress=AndroidResults.scanProgress(job),statusLabel=AndroidResults.scanStatusLabel(job);
+    text('txtProgress',progress.processed+'/'+progress.total+' • %'+num(progress.percentage,1));
+    text('txtStatus',statusLabel);text('txtScanHeroSubtitle','Başarılı: '+job.successful+' • Yetersiz: '+job.insufficient+' • Hata: '+job.errors);
     text('txtScanHeroEyebrow',job.status==='RUNNING'?'BIST hisseleri taranıyor':'Tarama durumu');
-    text('scanState',job.status+' • '+job.processed+'/'+job.total);
+    text('scanState',statusLabel+' • '+progress.processed+'/'+progress.total);
     text('btnStartScan',['QUEUED','RUNNING','CANCELLING'].includes(job.status)?'■\nDURDUR':'▶\nBAŞLAT');show('progress',['QUEUED','RUNNING','CANCELLING'].includes(job.status));
     const storage=job.storage,stored=storage?storage.error?'Tarama kaydı yazılamadı: '+storage.error:storage.checkpointSaved?(storage.ephemeral?'Geçici kayıt':'Yeniden açılış için kaydedildi')+' • son '+storage.maxRetainedJobs+' tarama / '+storage.retentionHours+' saat':'Kontrol noktası henüz yazılmadı':'';
-    text('scanCoverageSummary','Başarılı '+job.successful+' • Veri yetersiz '+job.insufficient+' • Hata '+job.errors+'\n'+job.provider+(stored?'\n'+stored:''));
+    text('scanCoverageSummary','Analiz üretildi '+job.successful+' • Veri yetersiz '+job.insufficient+' • Hata '+job.errors+' • Bekliyor '+progress.pending+'\n'+job.provider+((['QUEUED','RUNNING','CANCELLING'].includes(job.status)&&job.lastRetry)?'\nSağlayıcı yeniden denenecek: '+job.lastRetry.symbol+' • '+job.lastRetry.attempt+' deneme • '+num(job.lastRetry.waitSeconds,1)+' sn bekleme':'')+(stored?'\n'+stored:''));
     for(const bar of app.querySelectorAll('progress'))bar.value=job.total?job.processed/job.total*100:0;
   }
   function filterDialog(){
@@ -218,7 +363,8 @@
   async function resultsScreen(){
     jobStatus();
     const delayed=BistTerminal.job?.signalAttestationVerified!==true;
-    resultUi={view:screen,filter:'ALL',sort:'SCORE',mode:['LONG','SHORT','HIGH_POWER'].includes(filter)?filter:'ALL',delayed,verifiedOnly:false};
+    resultUi={view:screen,filter:'ALL',sort:'SCORE',mode:['LONG','SHORT','HIGH_POWER'].includes(filter)?filter:'ALL',delayed,verifiedOnly:false,
+      homeTrend:params.jobId===BistTerminal.job?.id?params.trendFilter||'ALL':'ALL',homeSignal:params.jobId===BistTerminal.job?.id?params.signalFilter||'ALL':'ALL'};
     for(const [id,mode] of [['scanAll','ALL'],['scanLong','LONG'],['scanShort','SHORT'],['scan85','HIGH_POWER'],['scanScore','SCORE']])bind(id,()=>{resultUi.mode=mode;paintResults();});
     for(const [id,value] of [['btnFilterAll','ALL'],['btnFilterStrongBuy','STRONG_BUY'],['btnFilterStrongSell','STRONG_SELL'],['btnFilterHighVolume','HIGH_VOLUME'],['btnFilterWatch','WATCH'],['btnFilterInsufficient','INSUFFICIENT'],['btnFilterRejected','REJECTED'],['btnFilterLowRisk','LOW_RISK'],['btnFilterCatalyst','CATALYST']])bind(id,()=>{resultUi.filter=value;paintResults();});
     bind('btnRealOpportunityScan',()=>navigateTo('bist_scan'));bind('btnSignalHistory',()=>navigateTo('signal_history'));bind('btnSortOpportunity',()=>{resultUi.sort=AndroidResults.sorts[(AndroidResults.sorts.indexOf(resultUi.sort)+1)%5];paintResults();});
@@ -243,8 +389,8 @@
             if(version!==route)return;records.push(...next.failures);
           }
           if(version!==route)return;
-          const insufficient=records.filter(issue=>issue.code==='INSUFFICIENT_HISTORY');
-          const providerErrors=records.filter(issue=>issue.code!=='INSUFFICIENT_HISTORY');
+          const insufficient=records.filter(issue=>issue.code==='INSUFFICIENT_HISTORY'||issue.classification==='INSUFFICIENT_DATA');
+          const providerErrors=records.filter(issue=>issue.code!=='INSUFFICIENT_HISTORY'&&issue.classification!=='INSUFFICIENT_DATA');
           const heading=el('strong','',records.length+' / '+first.total+' kayıt • '+insufficient.length+' yetersiz geçmiş • '+providerErrors.length+' sağlayıcı/hesap hatası');
           const explanation=el('p','terminal-note','Yetersiz geçmiş bir fiyat hatası değildir: gerekli kapanmış mum sayısına ulaşılamadı, teknik hesap üretilmedi. 404 sembol/kaynak eşleşmesi; 502 ise veri sağlayıcısı/yanıt sorunu olabilir. Bunlar doğrulanmış AL/SAT sinyali değildir.');
           failuresBox.replaceChildren(heading,explanation);
@@ -252,9 +398,9 @@
             const code=String(issue.code||'HATA');
             const reason=String(issue.error||'Neden belirtilmedi').replace(new RegExp('^'+code+':\\s*'),'').slice(0,240);
             const have=Number.isInteger(issue.closedBarCount)?issue.closedBarCount+' / '+(issue.requiredClosedBars||220)+' kapanmış mum • ':'';
-            const label=code==='INSUFFICIENT_HISTORY'?'YETERSİZ GEÇMİŞ':(issue.classification==='PROVIDER'?'SAĞLAYICI HATASI':code);
+            const label=(code==='INSUFFICIENT_HISTORY'||issue.classification==='INSUFFICIENT_DATA')?'YETERSİZ GEÇMİŞ':(issue.classification==='PROVIDER'?'SAĞLAYICI HATASI':code);
             const line=el('div','',String(issue.symbol||'—')+' • '+have+label+' • '+reason);
-            line.dataset.failureCategory=code==='INSUFFICIENT_HISTORY'?'insufficient':'provider';
+            line.dataset.failureCategory=(code==='INSUFFICIENT_HISTORY'||issue.classification==='INSUFFICIENT_DATA')?'insufficient':'provider';
             failuresBox.append(line);
           }
           if(!records.length)failuresBox.append(el('div','','Kaydedilmiş ayrıntılı hata yok.'));
@@ -346,7 +492,8 @@
   }
   function paintResults(validity,condition){
     const list=$('scanList')||$('list');if(!list)return;list.replaceChildren();
-    const rows=AndroidResults.apply(lastRows,resultUi).filter(x=>(!validity||x.signalValidity===validity)&&(!condition||condition(x)));
+    const rows=AndroidResults.homeSelect(AndroidResults.apply(lastRows,resultUi),{trend:resultUi.homeTrend||'ALL',signal:resultUi.homeSignal||'ALL',attestationVerified:!resultUi.delayed}).filter(x=>(!validity||x.signalValidity===validity)&&(!condition||condition(x)));
+    if(resultUi.homeTrend!=='ALL'||resultUi.homeSignal!=='ALL')note(list,'Ana panel filtresi: trend '+(AndroidResults.trendNames[resultUi.homeTrend]||'Tümü')+' • sinyal '+(AndroidResults.signalNames[resultUi.homeSignal]||'Tümü'));
     for(const [id,on] of [['btnVerifiedOnly',resultUi.verifiedOnly],['scanAll',resultUi.mode==='ALL'],['scan85',resultUi.mode==='HIGH_POWER'],['scanScore',resultUi.mode==='SCORE']])$(id)?.setAttribute('aria-pressed',String(!!on));
     let rendered=0;
     const appendBatch=()=>{for(const x of rows.slice(rendered,rendered+50)){
@@ -817,7 +964,12 @@
         if(request!==version||token!==loadNumber)return;
         if(data?.symbol!==symbol||data?.interval!==interval)throw Error('Sembol/periyot yanıtı seçili grafikle eşleşmedi.');
         chartData=data;paintStock(data);
-      }catch(e){if(request!==version||token!==loadNumber)return;show('chartUnavailablePanel');text('chartUnavailableReason',e.message);text('chartStatus','Veri alınamadı');text('plainExplanation','Seçilen periyotta veri alınamadı.');
+        // Feed the visible six evidence cards from the selected native chart.
+        // Never use an unrelated scan row or synthetic market signal.
+        window.Build670SixCards?.renderNative(data);
+      }catch(e){if(request!==version||token!==loadNumber)return;
+        window.Build670SixCards?.unavailable(e?.message||'Veri kaynağı kullanılamıyor.');
+        show('chartUnavailablePanel');text('chartUnavailableReason',e.message);text('chartStatus','Veri alınamadı');text('plainExplanation','Seçilen periyotta veri alınamadı.');
         for(const [id,label] of [['expRsi','RSI'],['expMacd','MACD'],['expStochastic','Stokastik'],['expCci','CCI'],['expAdx','ADX'],['expMomentum','Momentum']])text(id,label+' — Veri alınamadı');
         text('expLevelSource','Destek/direnç hesaplanamadı: '+e.message);
       }
@@ -835,6 +987,21 @@
         button.style.borderColor=active?'transparent':'#315167';button.setAttribute('aria-pressed',String(active));
         text(id,id==='toggleSupportResistance'?'S/D'+(active?' ✓':''):id.replace('toggle','').toUpperCase()+(active?' ✓':''));};
       bind(id,()=>{chartOptions[id]=!chartOptions[id];if(id==='toggleSupportResistance'){chartOptions.toggleSupport=chartOptions.toggleResistance=chartOptions[id];refreshSideButtons();}paint();if(chartData)drawChart($('chart'),chartData);});paint();
+    }
+    // Relative-volume fill is display-only and never changes OHLCV or signal calculations.
+    const volumeToggleHost=$('toggleVolume')?.parentElement||$('toggleSupportResistance')?.parentElement;
+    if(volumeToggleHost&&!document.getElementById('apk-toggleRelativeVolumeFill')){
+      const button=document.createElement('button');button.type='button';
+      button.id='apk-toggleRelativeVolumeFill';button.className='apk-node apk-Button apk-action';
+      button.style.cssText='min-height:48px;padding:0 12px;border-radius:8px;border:1px solid #2b6780;cursor:pointer';
+      const paint=()=>{const active=!!chartOptions.toggleRelativeVolumeFill;
+        button.textContent='Mum dolgusu · Göreli hacim'+(active?' ✓':'');
+        button.setAttribute('aria-pressed',String(active));
+        button.style.background=active?'#18caa8':'#08293d';button.style.color=active?'#042132':'#e1f3fb';};
+      button.onclick=()=>{chartOptions.toggleRelativeVolumeFill=!chartOptions.toggleRelativeVolumeFill;
+        try{localStorage.setItem('build670_relative_volume_fill',JSON.stringify(chartOptions.toggleRelativeVolumeFill));}catch{}
+        paint();if(chartData)drawChart($('chart'),chartData);};
+      volumeToggleHost.append(button);paint();
     }
     const nativeToggle=$('toggleSupportResistance'),toggleHost=nativeToggle?.parentElement;
     if(toggleHost){
@@ -864,7 +1031,7 @@
       refreshSideButtons=()=>built.forEach(fn=>fn());refreshSideButtons();
     }
     bind('chartZoomIn',()=>AndroidPriceChart.zoom($('chart'),1.35));bind('chartZoomOut',()=>AndroidPriceChart.zoom($('chart'),1/1.35));
-    if(!reference)load(settings.interval||'1d');
+    if(!reference)load(params.interval||settings.interval||'1d');
   }
   function readableText(data){const bars=data.candles.map((b,i)=>({...b,closed:b.closed===true||(b.closed==null&&(i<data.candles.length-1||data.lastBarClosed===true))}));const x=BistStockAnalysis.readable(bars,data.interval,calculateIndicators);if(!x)return 'Açıklama için yeterli kapanmış veri yok.';return (x.direction==='RISING'?'Yükseliş':x.direction==='FALLING'?'Düşüş':'Kararsız')+' • '+x.period+'\nİncelenen fiyat '+num(x.examinedPrice)+' • Destek '+num(x.support)+' • Direnç '+num(x.resistance)+'\nRSI '+num(x.rsi,1)+' • Hacim oranı '+num(x.volumeRatio)+' • ATR %'+num(x.atrPercent);}
   // The publication audit is intentionally not a readable paragraph. Keep its
@@ -955,7 +1122,7 @@
     for(const [tf,label] of [['1m','1 DK'],['3m','3 DK'],['5m','5 DK'],['10m','10 DK'],['15m','15 DK'],['30m','30 DK'],['60m','1 SAAT'],['240m','4 SAAT'],['1d','1 GÜN'],['1w','1 HAFTA'],['1mo','1 AY'],['all','TÜMÜ']])d.append(action(label,()=>{d.close();callback(tf);}));
     d.addEventListener('close',()=>d.remove());document.body.append(d);d.showModal();
   }
-  const chartOptions={toggleEma9:true,toggleEma21:true,toggleVwap:true,toggleEma20:false,toggleEma50:false,toggleEma200:false,toggleBollinger:false,toggleMacd:false,toggleTrend:false,toggleChannel:false,toggleSupportResistance:true,toggleSupport:true,toggleResistance:true};
+  const chartOptions={toggleRelativeVolumeFill:(()=>{try{return JSON.parse(localStorage.getItem('build670_relative_volume_fill'))===true;}catch{return false;}})(),toggleEma9:true,toggleEma21:true,toggleVwap:true,toggleEma20:false,toggleEma50:false,toggleEma200:false,toggleBollinger:false,toggleMacd:false,toggleTrend:false,toggleChannel:false,toggleSupportResistance:true,toggleSupport:true,toggleResistance:true};
   function drawChart(container,data){return AndroidPriceChart.mount(container,data,{options:chartOptions,onModel:m=>{
     if(screen!=='stock_detail'||chartData!==data)return;const e=m.extended,t=m.trend,l=m.levels;
     // Expanded indicators come from the exact same closed-candle chart model.
@@ -1139,7 +1306,7 @@
       reloadSettings(){settings=loadPreferences();schedule();recoveryNotice();},
       coverage(){return {screen,xmlSource:!['cheap','universe','delayed','fullscreen'].includes(screen),unboundButtons:[...app.querySelectorAll('[data-apk-interactive=true]')].filter(x=>x.getClientRects().length&&!x.classList.contains('apk-action')&&!x.onclick&&!x.disabled).map(x=>x.dataset.apkId||x.textContent)};}};
     recoveryNotice();let previous='';
-    setInterval(()=>{const job=BistTerminal.job;if(!job)return;const current=job.id+job.status+job.processed;if(current===previous)return;previous=current;jobStatus();if(screen==='bist_scan')openCompletedScanResults(job);if(['scan_results','opportunity'].includes(screen))safe(loadRows)();},2000);
+    setInterval(()=>{const job=BistTerminal.job;if(!job)return;const current=job.id+job.status+job.processed;if(current===previous)return;previous=current;jobStatus();if(screen==='bist_scan')openCompletedScanResults(job);if(['scan_results','opportunity'].includes(screen))safe(loadRows)();if(screen==='main'){homeRows();safe(refreshHomeRows)();}},2000);
   }
   boot().catch(e=>{app.replaceChildren(el('div','apk-error',e.message));});
 })();

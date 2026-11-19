@@ -39,6 +39,8 @@ jobs:
           node tests/test_chart_support_levels.cjs
           node tests/test_chart_integrity.cjs
           node tests/test_chart_canvas_upgrade.cjs
+          node tests/test_relative_volume_fill.cjs
+          node tests/test_six_evidence_cards.cjs
           python tests/verify_chart_math.py
       - name: Mouse interaction unit regressions
         run: node tests/chart_mouse_unit.cjs
@@ -71,6 +73,8 @@ jobs:
           node --check tests/browser_system_report.cjs
           node --check tests/browser_scan_completion_trends.cjs
           node --check tests/browser_scan_quota_recovery.cjs
+          node --check tests/browser_opportunity_evidence.cjs
+          node tests/test_home_results.cjs
       - name: Install pinned browser test runtime
         run: |
           npm install --no-save --package-lock=false playwright@1.62.1
@@ -103,6 +107,7 @@ jobs:
           run_case tests/browser_results.cjs
           run_case tests/browser_scan_completion_trends.cjs
           run_case tests/browser_scan_quota_recovery.cjs
+          run_case tests/browser_opportunity_evidence.cjs
           run_case tests/browser_chart_state.cjs
           run_case tests/browser_chart_support_levels.cjs
           run_case tests/chart_mouse.cjs

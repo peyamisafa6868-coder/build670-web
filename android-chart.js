@@ -7,6 +7,13 @@
   const compact=v=>v>=1e9?fmt(v/1e9,1)+'B':v>=1e6?fmt(v/1e6,1)+'M':v>=1000?fmt(v/1000,1)+'K':fmt(v,0);
   function date(t,year=false){const p=new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',day:'2-digit',month:'2-digit',...(year?{year:'2-digit'}:{}),hour:'2-digit',minute:'2-digit'}).formatToParts(t),get=k=>p.find(x=>x.type===k)?.value;return get('day')+'.'+get('month')+(year?'.'+get('year'):'')+' '+get('hour')+':'+get('minute');}
   const colors={grid:'#52708630',up:'#16c994',down:'#f07972',ema20:'#ffd247',ema50:'#21b4ff',ema200:'#b385fa',bb:'#a9b7cbb2',rsi:'#ffe14f',macd:'#00e5ff',signal:'#ffad45',text:'#b9ccd9',axis:'#d0ddea',price:'#00e6aa'};
+  function relativeVolumeFill(bars,index,lastBarClosed){
+    const b=bars[index],isClosed=(v,i)=>v.closed===true||(v.closed==null&&(i<bars.length-1||lastBarClosed===true));
+    if(!b||!isClosed(b,index)||!Number.isFinite(b.volume)||b.volume<0||index<50)return null;
+    const prior=bars.slice(index-50,index);
+    if(prior.length!==50||prior.some((v,i)=>!isClosed(v,index-50+i)||!Number.isFinite(v.volume)||v.volume<0))return null;
+    return prior.filter(v=>v.volume<b.volume).length/50;
+  }
   function model(data,bars){
     if(!models.has(data)){
       const pending=BistTerminal.api('/api/chart-analysis',{candles:bars.map((x,i)=>({...x,closed:typeof x.closed==='boolean'?x.closed:i<bars.length-1||data.lastBarClosed})),intraday:!['1d','1w','1mo','all'].includes(data.interval)}).catch(error=>{if(models.get(data)===pending)models.delete(data);throw error;});
@@ -108,7 +115,15 @@
     s.drawnLevels=drawnLevels;
     function aligned(a,yy,color,width=2){c.beginPath();let started=false;for(let i=0;i<count;i++){const v=a[start+i];if(!finite(v))continue;const xx=x(i);if(started)c.lineTo(xx,yy(v));else{c.moveTo(xx,yy(v));started=true;}}if(started){c.strokeStyle=color;c.lineWidth=width;c.stroke();}}
     const body=Math.max(2,Math.min(12,step*.55));const spikeIdx=new Set((s.quality?.spikes||[]).map(v=>v.index));
-    visible.forEach((b,i)=>{const xx=x(i),color=b.close>=b.open?colors.up:colors.down;line(xx,y(b.low),xx,y(b.high),color,2);const y1=y(b.open),y2=y(b.close);rect(xx-body/2,Math.min(y1,y2),xx+body/2,Math.max(Math.max(y1,y2),Math.min(y1,y2)+2),color);
+    visible.forEach((b,i)=>{const xx=x(i),color=b.close>=b.open?colors.up:colors.down;line(xx,y(b.low),xx,y(b.high),color,2);const y1=y(b.open),y2=y(b.close),upper=Math.min(y1,y2),lower=Math.max(y1,y2),height=lower-upper;
+      const index=start+i,percentile=relativeVolumeFill(all,index,s.data.lastBarClosed);
+      if(enabled('toggleRelativeVolumeFill',false)){
+        c.strokeStyle=color;c.lineWidth=1.5;
+        if(height<=1)line(xx-body/2,y(b.close),xx+body/2,y(b.close),color,2);
+        else{c.strokeRect(xx-body/2,upper,body,height);
+          if(percentile!==null&&percentile>0){c.fillStyle=color;const fill=height*percentile;c.fillRect(xx-body/2,b.close>=b.open?lower-fill:upper,body,fill);}
+        }
+      }else rect(xx-body/2,upper,xx+body/2,Math.max(lower,upper+2),color);
       if(spikeIdx.has(start+i)){c.fillStyle='#ffcf78';c.beginPath();c.arc(xx,Math.max(pt+8,y(b.high)-5),3,0,Math.PI*2);c.fill();}
     });
     for(const [a,color,width] of overlays)aligned(a,y,color,width);
@@ -212,5 +227,6 @@
   }
   function zoom(container,factor){const s=states.get(container);if(s){s.visible=clamp(Math.round(s.visible/factor),Math.min(12,s.bars.length),s.bars.length);s.redraw?.();}}
   function clear(container){if(container){const s=states.get(container);if(s){clearTimeout(s.longTimer);s.resizeObserver?.disconnect();if(s.frame!=null)cancelAnimationFrame(s.frame);s.pointers?.clear();}states.delete(container);container.replaceChildren();}}
-  window.AndroidPriceChart={mount,zoom,clear,getState:container=>states.get(container),colors};
+  if(typeof window!=='undefined')window.AndroidPriceChart={mount,zoom,clear,getState:container=>states.get(container),colors};
+  if(typeof module!=='undefined')module.exports={relativeVolumeFill};
 })();
