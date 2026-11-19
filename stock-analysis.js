@@ -306,6 +306,7 @@
     }
     const current=state.candlePayload;
     const matching=current?.symbol===symbol&&current?.interval===interval&&
+      document.getElementById('chartMode')?.textContent!=='VERİ YOK'&&
       Array.isArray(current.candles)&&current.candles.length>1&&!offlineIsTestSource(current.source);
     if(!force&&matching){
       const status=document.getElementById('easyDataSource')?.textContent||'';
@@ -323,6 +324,7 @@
         if(state.market!==market||state.symbol!==symbol||state.interval!==interval)return false;
         const loaded=state.candlePayload;
         if(loaded?.symbol===symbol&&loaded.interval===interval&&
+           document.getElementById('chartMode')?.textContent!=='VERİ YOK'&&
            Array.isArray(loaded.candles)&&loaded.candles.length>1&&!offlineIsTestSource(loaded.source)){
           const status=document.getElementById('easyDataSource')?.textContent||'';
           if(status.includes('bekleniyor')||status.includes('yükleniyor'))
