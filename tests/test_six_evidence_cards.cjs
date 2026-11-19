@@ -63,6 +63,7 @@ context.state.candlePayload=null;
 context.loadHistory=async()=>{
   const payload={symbol:'TEST',interval:'5m',source:'TEST PROVIDER',candles};
   context.state.candlePayload=payload;
+  elements.chartMode.textContent='KAPANMIŞ VERİ';
   context.showChart(payload);
 };
 (async()=>{
@@ -70,7 +71,7 @@ context.loadHistory=async()=>{
   assert.equal(result,true);
   assert.match(elements.easyPriceMovement.textContent,/Son 5 dk kapanışı/);
   assert.match(elements.easyDataSource.textContent,/TEST/);
-  context.loadHistory=async()=>{context.state.candlePayload=null;};
+  context.loadHistory=async()=>{context.state.candlePayload=null;elements.chartMode.textContent='VERİ YOK';};
   const unavailable=await context.Build670SixCards.ensureSelected(true);
   assert.equal(unavailable,false);
   assert.match(elements.easyDataSource.textContent,/yeterli doğrulanmış geçmiş bulunamadı/);
