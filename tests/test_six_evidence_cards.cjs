@@ -50,3 +50,29 @@ assert.match(elements.easyCompany.textContent,/yüklenmedi/);
 assert.match(elements.easyDataSource.textContent,/Geçmiş veri alınamadı/);
 assert.ok(fs.readFileSync(path.join(__dirname,'../android-app.js'),'utf8').includes('Build670SixCards?.renderNative(data)'));
 console.log('PASS native chart data bridges six cards and missing provider explains unavailable');
+
+
+// Dashboard fallback: a selected symbol must explicitly hydrate six cards
+// even when a market-wide scan finished without populating the local chart.
+elements.stockExplanationPanel=new Node('section');
+context.state.market='BIST';
+context.state.demo=false;
+context.state.symbol='TEST';
+context.state.interval='5m';
+context.state.candlePayload=null;
+context.loadHistory=async()=>{
+  const payload={symbol:'TEST',interval:'5m',source:'TEST PROVIDER',candles};
+  context.state.candlePayload=payload;
+  context.showChart(payload);
+};
+(async()=>{
+  const result=await context.Build670SixCards.ensureSelected(true);
+  assert.equal(result,true);
+  assert.match(elements.easyPriceMovement.textContent,/Son 5 dk kapanışı/);
+  assert.match(elements.easyDataSource.textContent,/TEST/);
+  context.loadHistory=async()=>{context.state.candlePayload=null;};
+  const unavailable=await context.Build670SixCards.ensureSelected(true);
+  assert.equal(unavailable,false);
+  assert.match(elements.easyDataSource.textContent,/yeterli doğrulanmış geçmiş bulunamadı/);
+  console.log('PASS dashboard selected-symbol hydration and explicit insufficient-data status');
+})().catch(error=>{console.error(error);process.exitCode=1;});
