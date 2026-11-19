@@ -209,7 +209,16 @@
     document.getElementById('easyRetryHistory')?.remove();
     ++companyRequest;
     put('easyCompany','Doğrulanmış şirket bilgisi bekleniyor.');
-    let closed;try{closed=closedCandles(payload);}catch{return;}
+    let closed;
+    try { closed=closedCandles(payload); }
+    catch(error) {
+      const detail='Kapanmış mum verisi doğrulanamadı: '+String(error?.message||error);
+      for(const id of ['easyPriceMovement','easyImportantLevels','easyChangeConditions','easyWhyInterest','easyRisks'])
+        put(id,'Veri biçimi veya kapanış bilgisi geçersiz.');
+      put('easyCompany','Doğrulanmış şirket bilgisi alınamadı.');
+      put('easyDataSource',detail);
+      return;
+    }
     const e=extended(closed),levels=ladder(closed,closed.at(-1)?.close);
     put('indStoch',format(e.stochastic14));put('indCci',format(e.cci20));put('indAdx',format(e.adx14));put('indMomentum',format(e.momentum10Pct)+(e.momentum10Pct==null?'':'%'));
     put('stockPivotSupports',levels.supports.length?levels.supports.map(format).join(' · '):'Bu dönemde doğrulanmış destek pivotu yok.');
@@ -276,7 +285,60 @@
   // confirmed candle payload. An unavailable provider is shown as an error,
   // not six indefinitely pending analyses.
   const evidenceRenderer=showChart;
+  // A completed market-wide scan does not hydrate the selected chart's OHLCV.
+  // Load only the explicitly selected BIST symbol when the explanation panel
+  // becomes visible; keep failures truthful and avoid background mass fetches.
+  let evidenceFetch=null, evidenceLastKey='', evidenceLastAt=0;
+  async function ensureSelected(force=false){
+    const panel=document.getElementById('stockExplanationPanel');
+    if(!panel||state.demo||typeof loadHistory!=='function')return false;
+    if(typeof location!=='undefined'&&/^#(?:stock_detail|technical_analysis|fullscreen)(?:[?]|$)/.test(location.hash))return false;
+    const market=state.market,symbol=String(document.getElementById('symbolInput')?.value||state.symbol||'').trim().toUpperCase();
+    const interval=state.interval||'15m',key=market+'|'+symbol+'|'+interval;
+    if(market!=='BIST'||!/^[A-Z0-9]{3,10}$/.test(symbol)){
+      globalThis.Build670SixCards.unavailable('Seçili BIST hisse kodu geçersiz veya desteklenmiyor.');
+      return false;
+    }
+    const current=state.candlePayload;
+    const matching=current?.symbol===symbol&&current?.interval===interval&&
+      Array.isArray(current.candles)&&current.candles.length>1&&!offlineIsTestSource(current.source);
+    if(!force&&matching){
+      const status=document.getElementById('easyDataSource')?.textContent||'';
+      if(status.startsWith('Veri bekleniyor')||status.includes('yükleniyor')||status.includes('verisi kullanılamıyor'))
+        evidenceRenderer(current,{sourceScreen:'NATIVE_CHART'});
+      return true;
+    }
+    if(evidenceFetch?.key===key)return evidenceFetch.promise;
+    if(!force&&evidenceLastKey===key&&Date.now()-evidenceLastAt<60000)return false;
+    evidenceLastKey=key;evidenceLastAt=Date.now();
+    put('easyDataSource',symbol+' · '+interval+' · Seçili hissenin gecikmeli fiyat geçmişi yükleniyor…');
+    const task=(async()=>{
+      try{
+        await loadHistory(); // shared Yahoo/CSV fallback and existing chart contract
+        if(state.market!==market||state.symbol!==symbol||state.interval!==interval)return false;
+        const loaded=state.candlePayload;
+        if(loaded?.symbol===symbol&&loaded.interval===interval&&
+           Array.isArray(loaded.candles)&&loaded.candles.length>1&&!offlineIsTestSource(loaded.source)){
+          const status=document.getElementById('easyDataSource')?.textContent||'';
+          if(status.includes('bekleniyor')||status.includes('yükleniyor'))
+            evidenceRenderer(loaded,{sourceScreen:'NATIVE_CHART'});
+          return true;
+        }
+        const status=document.getElementById('easyDataSource')?.textContent||'';
+        if(status.includes('bekleniyor')||status.includes('yükleniyor'))
+          globalThis.Build670SixCards.unavailable(symbol+' / '+interval+' için yeterli doğrulanmış geçmiş bulunamadı.');
+        return false;
+      }catch(error){
+        if(state.market===market&&state.symbol===symbol&&state.interval===interval)
+          globalThis.Build670SixCards.unavailable(symbol+' / '+interval+': '+String(error?.message||error));
+        return false;
+      }
+    })();
+    evidenceFetch={key,promise:task};
+    try{return await task;}finally{if(evidenceFetch?.promise===task)evidenceFetch=null;}
+  }
   globalThis.Build670SixCards=Object.freeze({
+    ensureSelected,
     renderNative(payload){
       if(!payload||typeof payload.symbol!=='string'||typeof payload.interval!=='string'||!Array.isArray(payload.candles))return false;
       evidenceRenderer(payload,{sourceScreen:'NATIVE_CHART'});
@@ -292,4 +354,27 @@
       put('easyDataSource','Seçilen hisse için doğrulanmış geçmiş alınamadı: '+String(reason||'Veri kaynağı kullanılamıyor.'));
     }
   });
+  // A visible, user-controlled recovery path is essential when a provider
+  // returns a 404/502 or the browser has no local candle history.
+  if(typeof window!=='undefined'){
+    const panel=document.getElementById('stockExplanationPanel');
+    const status=document.getElementById('easyDataSource');
+    if(panel&&status){
+      const button=document.createElement('button');
+      button.id='easyLoadSelectedHistory';button.type='button';
+      button.textContent='Seçili hissenin analizini yükle / yenile';
+      button.style.cssText='margin:0 19px 16px;min-height:38px;border:1px solid #287e89;border-radius:8px;background:#103443;color:#e5f9f5;padding:8px 12px;font-weight:650';
+      button.addEventListener('click',async()=>{
+        button.disabled=true;
+        try{await ensureSelected(true);}finally{button.disabled=false;}
+      });
+      status.after(button);
+      if(typeof IntersectionObserver==='function'){
+        const observer=new IntersectionObserver(entries=>{
+          if(entries.some(x=>x.isIntersecting))void ensureSelected();
+        },{threshold:0.01});
+        observer.observe(panel);
+      }else window.addEventListener('load',()=>void ensureSelected(),{once:true});
+    }
+  }
 })();
