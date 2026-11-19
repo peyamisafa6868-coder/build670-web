@@ -201,7 +201,11 @@
   }
   const originalShow=showChart;
   showChart=function(payload,options={}){
-    originalShow(payload,options);reset();
+    // The native stock chart is already rendered by AndroidPriceChart. Reuse
+    // its validated OHLCV only for these six explanation cards, without
+    // rendering the legacy chart or changing any scoring/strategy gates.
+    if(options.sourceScreen!=='NATIVE_CHART')originalShow(payload,options);
+    reset();
     document.getElementById('easyRetryHistory')?.remove();
     ++companyRequest;
     put('easyCompany','Doğrulanmış şirket bilgisi bekleniyor.');
@@ -267,4 +271,25 @@
     put('easyRisks',Number.isFinite(atr)?'ATR(14) '+format(atr)+' TL; son kapanışın %'+format(atrPct)+' düzeyinde.':'ATR(14) hesaplamak için yeterli geçmiş yok.')+' Son kapanmış mum '+time+' TSİ. Kaynak: '+source+'. ATR gelecek fiyatı veya kesin kaybı tahmin etmez.';
 
   };
+  // Separate old offline chart and new Android-native stock route shared a
+  // script but not a data event. Explicitly bridge ONLY a selected chart's
+  // confirmed candle payload. An unavailable provider is shown as an error,
+  // not six indefinitely pending analyses.
+  const evidenceRenderer=showChart;
+  globalThis.Build670SixCards=Object.freeze({
+    renderNative(payload){
+      if(!payload||typeof payload.symbol!=='string'||typeof payload.interval!=='string'||!Array.isArray(payload.candles))return false;
+      evidenceRenderer(payload,{sourceScreen:'NATIVE_CHART'});
+      return true;
+    },
+    unavailable(reason){
+      ++companyRequest;
+      reset();
+      document.getElementById('easyRetryHistory')?.remove();
+      for(const id of ['easyPriceMovement','easyImportantLevels','easyChangeConditions','easyWhyInterest','easyRisks'])
+        put(id,'Grafik verisi kullanılamıyor.');
+      put('easyCompany','Bu seçim için doğrulanmış şirket bilgisi yüklenmedi.');
+      put('easyDataSource','Seçilen hisse için doğrulanmış geçmiş alınamadı: '+String(reason||'Veri kaynağı kullanılamıyor.'));
+    }
+  });
 })();
